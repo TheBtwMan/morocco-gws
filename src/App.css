@@ -1,27 +1,31 @@
-*{
+* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
+
 body {
-    
+
   color: #FFFFFF;
   height: 100vh;
   overflow: hidden;
   font-family: sans-serif;
 }
+
 .platform {
   display: grid;
   grid-template-rows: 52px 1fr;
   height: 100vh;
 }
-.layout{
-  display : grid;
+
+.layout {
+  display: grid;
   grid-template-columns: 220px 1fr 200px;
   height: 100%;
 }
-.topbar{
-  background:#cac4c4;
+
+.topbar {
+  background: #cac4c4;
   border-bottom: 1px solid #111111;
   display: flex;
   align-items: center;
@@ -31,26 +35,30 @@ body {
   font-size: 40px;
   font-weight: bold;
 }
-.sidebar{
+
+.sidebar {
   background: #cac4c4;
   border-top: 5px solid #111111;
-  color:#111111;
+  color: #111111;
   border-right: 5px solid #111111;
   font-weight: bold;
   padding-left: 23px;
   padding-top: 20px;
   font-size: 20px;
 }
-.info-panel{
+
+.info-panel {
   background: #111111;
   border-left: 5px solid #111111;
 }
-.map-area{
+
+.map-area {
   background: #ffffff;
   display: grid;
   grid-template-rows: 50px 1fr;
 }
-.toolbar{
+
+.toolbar {
   background-color: #111111;
   border-bottom: 1px solid #111111;
   display: flex;
@@ -58,7 +66,8 @@ body {
   padding: 0 16px;
   gap: 10px;
 }
-.toolbar button{
+
+.toolbar button {
   background: transparent;
   border: 1px solid #7BD4E9;
   color: #7BD4E9;
@@ -68,15 +77,18 @@ body {
   cursor: pointer;
   letter-spacing: 1px;
 }
+
 .toolbar button:hover {
   background: #7BD4E9;
   color: #f8f8f8;
 }
+
 .toolbar button.active {
   background: #7BD4E9;
   color: #f5f2f2;
 }
-.info-panel{
+
+.info-panel {
   padding: 16px;
   background: #cac4c4;
   display: flex;
@@ -85,26 +97,30 @@ body {
   border-top: 5px solid #111111;
   font-weight: bold;
 }
-.info-panel label{
+
+.info-panel label {
   display: block;
   font-size: 20px;
   letter-spacing: 2px;
-  color:#111111;
+  color: #111111;
   margin-bottom: 8px;
 }
-.info-panel input[type="range"]{
+
+.info-panel input[type="range"] {
   width: 100%;
   accent-color: #7BD4E9;
   cursor: pointer;
 }
-.info-panel span{
+
+.info-panel span {
   display: block;
   font-size: 28px;
-  color:#111111;
+  color: #111111;
   text-align: center;
   margin-top: 8px;
   letter-spacing: 3px;
 }
+
 .admin-buttons {
   display: flex;
   flex-direction: column;
@@ -132,25 +148,26 @@ body {
 .admin-btn:hover {
   background: #575656;
 }
-.info-panel div{
+
+.info-panel div {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+
 .map-canvas {
-  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.map-canvas .leaflet-container {
   width: 100%;
   height: 100%;
 }
 
-.map-canvas svg {
-  cursor: grab;
-}
-
-.map-canvas svg:active {
-  cursor: grabbing;
-}
-.info-panel div label{
+.info-panel div label {
   font-size: 30px;
   font-weight: bold;
   padding-left: 40px;

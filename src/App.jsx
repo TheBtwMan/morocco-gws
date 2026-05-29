@@ -18,27 +18,27 @@ function App() {
             <button
               onClick={() => setActiveFilter('Groundwater')}
               className={activeFilter === 'Groundwater' ? 'active' : ''}>
-                Groundwater
+              Groundwater
             </button>
             <button
               onClick={() => setActiveFilter('Surface Water')}
               className={activeFilter === 'Surface Water' ? 'active' : ''}>
-                Surface Water
+              Surface Water
             </button>
             <button
               onClick={() => setActiveFilter('Land Use')}
               className={activeFilter === 'Land Use' ? 'active' : ''}>
-            Land Use
+              Land Use
             </button>
             <button
               onClick={() => setActiveFilter('Decision Making')}
               className={activeFilter === 'Decision Making' ? 'active' : ''}>
-            Decision Making
+              Decision Making
             </button>
           </div>
           <div className="map-canvas">
             <MoroccoMap selectedYear={selectedYear} activeFilter={activeFilter} />
-            </div>
+          </div>
         </section>
         <aside className="info-panel">
           <div>
@@ -46,18 +46,18 @@ function App() {
             <input type="range" min="2003" max="2024" step="1" defaultValue="2003" onChange={(e) => setSelectedYear(e.target.value)} />
             <span>{selectedYear}</span>
           </div>
-            <div className="admin-buttons">
-              <button
+          <div className="admin-buttons">
+            <button
               onClick={() => setAdminLevel('admin0-all')}
               className={adminLevel === 'admin0-all' ? 'admin-btn active' : 'admin-btn'}>
               Admin0 : All the map
-              </button>
-              <button
+            </button>
+            <button
               onClick={() => setAdminLevel('admin1-communes')}
               className={adminLevel === 'admin1-communes' ? 'admin-btn active' : 'admin-btn'}>
               Admin1 : Communes
-              </button>
-              <button
+            </button>
+            <button
               onClick={() => setAdminLevel('admin2-regions')}
               className={adminLevel === 'admin2-regions' ? 'admin-btn active' : 'admin-btn'}>
               Admin2 : Regions
