@@ -1,6 +1,8 @@
 
 import ee
 import geemap
+import json
+import os
 
 # Simple in-memory cache for get_all_regions_data results
 _regions_cache = {}
@@ -15,6 +17,35 @@ except Exception:
 
 
 regions_dataset = "WM/geoLab/geoBoundaries/600/ADM1"
+
+# Cache variable for local regions
+_morocco_regions_fc = None
+
+def get_morocco_regions() -> ee.FeatureCollection:
+    global _morocco_regions_fc
+    if _morocco_regions_fc is not None:
+        return _morocco_regions_fc
+        
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    ma_json_path = os.path.normpath(os.path.join(base_dir, "..", "src", "data", "ma_simplified.json"))
+    
+    with open(ma_json_path, 'r', encoding='utf-8') as f:
+        geojson = json.load(f)
+        
+    ee_features = []
+    for feature in geojson['features']:
+        name = feature['properties']['name']
+        region_id = feature['properties']['id']
+        ee_geom = ee.Geometry(feature['geometry'])
+        ee_feat = ee.Feature(ee_geom, {
+            "shapeName": name,
+            "shapeGroup": "MAR",
+            "id": region_id
+        })
+        ee_features.append(ee_feat)
+        
+    _morocco_regions_fc = ee.FeatureCollection(ee_features)
+    return _morocco_regions_fc
 map_dataset = "USDOS/LSIB_SIMPLE/2017"
 GRACE_DATASET = "NASA/GRACE/MASS_GRIDS/LAND"
 SENTINEL2_DATASET = "COPERNICUS/S2_SR_HARMONIZED"
@@ -22,18 +53,32 @@ MAX_CLOUD_PERCENT = 20
 
 
 def get_boundary() -> ee.Geometry:
-    # Loads country borders, merges Morocco + Western Sahara into one geometry, returns the unified polygon for clipping
-    countries = ee.FeatureCollection(map_dataset)
-    morocco_parts = countries.filter(
-        ee.Filter.inList("country_na", ["Morocco", "Western Sahara"])
+    # Merges all 12 custom local regions into a single unified country geometry for seamless satellite clipping
+    return get_morocco_regions().union().geometry()
+
+def admin2() -> str:
+    # 1. Load the regions from our custom local FeatureCollection (already includes all 12 regions)
+    morocco_regions = get_morocco_regions().filter(
+        ee.Filter.inList("shapeGroup", ["MAR", "ESH"])
     )
-    unified_morocco = morocco_parts.union()
-    return unified_morocco.geometry()
+    
+    # 2. Paint outlines onto a transparent image (so only borders are drawn, no solid fill)
+    empty = ee.Image().byte()
+    outlines = empty.paint(
+        featureCollection=morocco_regions,
+        color=1,
+        width=2
+    )
+    
+    # 3. Get GEE map ID for the outline image (using a clean dark-grey outline)
+    map_id = outlines.getMapId({"palette": ["#334155"], "min": 1, "max": 1})
+    
+    return map_id["tile_fetcher"].url_format
 
 
 def list_regions_morocco() -> list:
-    # Fetches all 12 Moroccan admin regions from geoBoundaries, returns a sorted list of region names
-    morocco = ee.FeatureCollection(regions_dataset).filter(
+    # Fetches all 12 Moroccan admin regions from our custom local FeatureCollection, returns a sorted list of region names
+    morocco = get_morocco_regions().filter(
         ee.Filter.eq("shapeGroup", "MAR")
     )
     regions = morocco.aggregate_array("shapeName").distinct().sort()
@@ -41,8 +86,8 @@ def list_regions_morocco() -> list:
 
 
 def get_region(region_name: str) -> ee.Geometry:
-    # Filters geoBoundaries for a single region by name, returns its geometry polygon
-    morocco = ee.FeatureCollection(regions_dataset).filter(
+    # Filters custom local regions for a single region by name, returns its geometry polygon
+    morocco = get_morocco_regions().filter(
         ee.Filter.eq("shapeGroup", "MAR")
     )
     selected_region = morocco.filter(ee.Filter.eq("shapeName", region_name))
@@ -242,7 +287,7 @@ def get_all_regions_data(year: int, index: str) -> dict:
     if cache_key in _regions_cache:
         return _regions_cache[cache_key]
 
-    regions = ee.FeatureCollection(regions_dataset).filter(ee.Filter.eq("shapeGroup", "MAR"))
+    regions = get_morocco_regions().filter(ee.Filter.eq("shapeGroup", "MAR"))
     index_lower = index.lower()
     if index_lower == "groundwater":
         image = (
@@ -406,7 +451,7 @@ def get_tile_url(year: int, index: str) -> str:
             "max": 1.5,
             "palette": ["white", "cyan", "blue"],
         }
-    elif index_lower == "ndwi":
+    elif index_lower in ["surface water", "ndwi"]:
         image = (
             ee.ImageCollection(SENTINEL2_DATASET)
             .filterBounds(morocco_border)
@@ -424,7 +469,7 @@ def get_tile_url(year: int, index: str) -> str:
                 "#E0FFFF", "#87CEEB", "#4682B4", "#1E90FF", "#0000CD",
             ],
         }
-    elif index_lower == "ndvi":
+    elif index_lower in ["land use", "ndvi"]:
         image = (
             ee.ImageCollection(SENTINEL2_DATASET)
             .filterBounds(morocco_border)
@@ -444,7 +489,7 @@ def get_tile_url(year: int, index: str) -> str:
             ],
         }
     else:
-        raise ValueError(f"Invalid index '{index}'. Use 'groundwater', 'ndwi', or 'ndvi'.")
+        raise ValueError(f"Invalid index '{index}'. Use 'groundwater', 'surface water' (ndwi), or 'land use' (ndvi).")
         
     map_id = image.getMapId(vis_params)
     return map_id["tile_fetcher"].url_format

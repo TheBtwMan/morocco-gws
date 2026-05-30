@@ -128,3 +128,11 @@ def get_time_series(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/admin2")
+def get_admin2():
+    """Returns the GEE tile URL for the administrative regions of Morocco."""
+    try:
+        tile_url = backend.admin2()
+        return {"tile_url": tile_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -37,7 +37,7 @@ function App() {
             </button>
           </div>
           <div className="map-canvas">
-            <MoroccoMap selectedYear={selectedYear} activeFilter={activeFilter} />
+            <MoroccoMap selectedYear={selectedYear} activeFilter={activeFilter} adminLevel={adminLevel} />
           </div>
         </section>
         <aside className="info-panel">
