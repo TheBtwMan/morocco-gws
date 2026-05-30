@@ -69,5 +69,46 @@ export async function getAdmin2TileUrl() {
     return data.tile_url;
 }
 
+export async function postChatQuery(message, history = [], context = {}) {
+    const response = await fetch(`${API_BASE}/chat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: message,
+            history: history,
+            current_year: context.year ? parseInt(context.year) : 2024,
+            current_index: context.index,
+            current_region: context.region
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.response;
+}
+
+export async function getPointData(lat, lon, year) {
+    const params = new URLSearchParams({
+        lat: lat,
+        lon: lon,
+        year: year
+    });
+
+    const response = await fetch(`${API_BASE}/data/point?${params}`);
+
+    if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+
+
 
 

@@ -494,3 +494,78 @@ def get_tile_url(year: int, index: str) -> str:
     map_id = image.getMapId(vis_params)
     return map_id["tile_fetcher"].url_format
 
+def get_point_data(lat: float, lon: float, year: int) -> dict:
+    """
+    Queries Earth Engine at a single coordinate using appropriate buffers.
+    - Groundwater (GRACE): 25km buffer due to low satellite resolution.
+    - NDWI and NDVI (Sentinel-2): 100m buffer for high spatial precision.
+    """
+    point = ee.Geometry.Point([lon, lat])
+    
+    # 1. Groundwater
+    try:
+        grace = (
+            ee.ImageCollection(GRACE_DATASET)
+            .select("lwe_thickness_csr")
+            .filterDate(f"{year}-01-01", f"{year}-12-31")
+            .mean()
+        )
+        gw_val = grace.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=point.buffer(25000),
+            scale=25000
+        ).get("lwe_thickness_csr").getInfo()
+    except Exception as e:
+        print(f"EE Point GW error: {e}")
+        gw_val = None
+
+    # 2. NDWI
+    try:
+        ndwi_img = (
+            ee.ImageCollection(SENTINEL2_DATASET)
+            .filterBounds(point.buffer(100))
+            .filterDate(f"{year}-01-01", f"{year}-12-31")
+            .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+            .median()
+            .normalizedDifference(["B3", "B8"])
+        )
+        ndwi_val = ndwi_img.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=point.buffer(100),
+            scale=10,
+            bestEffort=True
+        ).get("nd").getInfo()
+    except Exception as e:
+        print(f"EE Point NDWI error: {e}")
+        ndwi_val = None
+
+    # 3. NDVI
+    try:
+        ndvi_img = (
+            ee.ImageCollection(SENTINEL2_DATASET)
+            .filterBounds(point.buffer(100))
+            .filterDate(f"{year}-01-01", f"{year}-12-31")
+            .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+            .median()
+            .normalizedDifference(["B8", "B4"])
+        )
+        ndvi_val = ndvi_img.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=point.buffer(100),
+            scale=10,
+            bestEffort=True
+        ).get("nd").getInfo()
+    except Exception as e:
+        print(f"EE Point NDVI error: {e}")
+        ndvi_val = None
+
+    return {
+        "lat": lat,
+        "lon": lon,
+        "year": year,
+        "groundwater": gw_val,
+        "ndwi": ndwi_val,
+        "ndvi": ndvi_val
+    }
+
+

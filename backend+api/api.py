@@ -1,6 +1,21 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 import backend
+import chat_advisor
+
+class ChatMessage(BaseModel):
+    role: str  # 'user' or 'assistant'
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = []
+    current_year: Optional[int] = 2024
+    current_index: Optional[str] = None
+    current_region: Optional[str] = None
+
 
 app = FastAPI(
     title="Geo AI Morocco",
@@ -54,7 +69,8 @@ def get_tile(index: str, year: int):
 def get_groundwater_data(year: int, region: str = Query(..., description="Region name")):
     """Returns mean groundwater anomaly (cm) for a region and year."""
     try:
-        data = backend.groundwater_data(year, region)
+        region_geom = backend.get_region(region)
+        data = backend.groundwater_data(year, region_geom)
         return {"region": region, "year": year, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -64,7 +80,8 @@ def get_groundwater_data(year: int, region: str = Query(..., description="Region
 def get_ndwi_data(year: int, region: str = Query(..., description="Region name")):
     """Returns mean NDWI value for a region and year."""
     try:
-        data = backend.ndwi_data(year, region)
+        region_geom = backend.get_region(region)
+        data = backend.ndwi_data(year, region_geom)
         return {"region": region, "year": year, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -74,7 +91,8 @@ def get_ndwi_data(year: int, region: str = Query(..., description="Region name")
 def get_ndvi_data(year: int, region: str = Query(..., description="Region name")):
     """Returns mean NDVI value for a region and year."""
     try:
-        data = backend.ndvi_data(year, region)
+        region_geom = backend.get_region(region)
+        data = backend.ndvi_data(year, region_geom)
         return {"region": region, "year": year, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -136,3 +154,31 @@ def get_admin2():
         return {"tile_url": tile_url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat")
+def chat_query(request: ChatRequest):
+    """
+    Processes user query about Moroccan indices and investment,
+    integrates map context, and returns data-driven analysis.
+    """
+    try:
+        response_text = chat_advisor.generate_chat_response(
+            message=request.message,
+            history=[{"role": m.role, "content": m.content} for m in request.history],
+            year=request.current_year or 2024,
+            current_index=request.current_index,
+            current_region=request.current_region
+        )
+        return {"response": response_text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/data/point")
+def get_point_data(lat: float = Query(..., description="Latitude"), lon: float = Query(..., description="Longitude"), year: int = Query(..., description="Year")):
+    """Returns Groundwater, NDWI, and NDVI values for a specific coordinate point and year."""
+    try:
+        data = backend.get_point_data(lat, lon, year)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
