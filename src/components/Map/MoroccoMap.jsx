@@ -292,9 +292,9 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
 
     try {
       const [gwData, ndwiData, ndviData] = await Promise.all([
-        getAllRegionsData('groundwater', selectedYearRef.current),
-        getAllRegionsData('ndwi', selectedYearRef.current),
-        getAllRegionsData('ndvi', selectedYearRef.current)
+        getAllRegionsData('groundwater', selectedYearRef.current).catch(() => ({})),
+        getAllRegionsData('ndwi', selectedYearRef.current).catch(() => ({})),
+        getAllRegionsData('ndvi', selectedYearRef.current).catch(() => ({}))
       ]);
 
       setInspector(prev => {
@@ -303,9 +303,9 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
           ...prev,
           loading: false,
           data: {
-            groundwater: gwData[regionName],
-            ndwi: ndwiData[regionName],
-            ndvi: ndviData[regionName]
+            groundwater: gwData[regionName] !== undefined ? gwData[regionName] : null,
+            ndwi: ndwiData[regionName] !== undefined ? ndwiData[regionName] : null,
+            ndvi: ndviData[regionName] !== undefined ? ndviData[regionName] : null
           }
         };
       });

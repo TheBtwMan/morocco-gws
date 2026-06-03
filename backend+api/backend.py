@@ -47,7 +47,7 @@ def get_morocco_regions() -> ee.FeatureCollection:
     _morocco_regions_fc = ee.FeatureCollection(ee_features)
     return _morocco_regions_fc
 map_dataset = "USDOS/LSIB_SIMPLE/2017"
-GRACE_DATASET = "NASA/GRACE/MASS_GRIDS/LAND"
+GRACE_DATASET = "NASA/GRACE/MASS_GRIDS_V04/MASCON"
 SENTINEL2_DATASET = "COPERNICUS/S2_SR_HARMONIZED"
 MAX_CLOUD_PERCENT = 20
 
@@ -98,7 +98,7 @@ def groundwater(year: int) -> geemap.Map:
     # Loads GRACE LWE data for the given year, clips to Morocco, displays on a map with a white-cyan-blue color scale
     grace = (
         ee.ImageCollection(GRACE_DATASET)
-        .select("lwe_thickness_csr")
+        .select("lwe_thickness")
         .filterDate(f"{year}-01-01", f"{year}-12-31")
         .mean()
     )
@@ -220,7 +220,7 @@ def groundwater_data(year: int, region: ee.Geometry) -> dict:
     # Loads GRACE data for the year, computes the spatial mean LWE (cm) inside the given region, returns as dict
     grace = (
         ee.ImageCollection(GRACE_DATASET)
-        .select("lwe_thickness_csr")
+        .select("lwe_thickness")
         .filterDate(f"{year}-01-01", f"{year}-12-31")
         .mean()
     )
@@ -292,11 +292,11 @@ def get_all_regions_data(year: int, index: str) -> dict:
     if index_lower == "groundwater":
         image = (
             ee.ImageCollection(GRACE_DATASET)
-            .select("lwe_thickness_csr")
+            .select("lwe_thickness")
             .filterDate(f"{year}-01-01", f"{year}-12-31")
             .mean()
         )
-        band_name = "lwe_thickness_csr"
+        band_name = "lwe_thickness"
         scale = 55000
     elif index_lower == "ndwi":
         image = (
@@ -325,21 +325,25 @@ def get_all_regions_data(year: int, index: str) -> dict:
     else:
         raise ValueError(f"Invalid index '{index}'. Use 'groundwater', 'ndwi', or 'ndvi'.")
 
-    reduced = image.reduceRegions(
-        collection=regions,
-        reducer=ee.Reducer.mean(),
-        scale=scale
-    )
-    
-    features = reduced.getInfo().get("features", [])
-    result = {}
-    for f in features:
-        props = f.get("properties", {})
-        name = props.get("shapeName")
-        val = props.get("mean")
-        if val is None:
-            val = props.get(band_name)
-        result[name] = val
+    try:
+        reduced = image.reduceRegions(
+            collection=regions,
+            reducer=ee.Reducer.mean(),
+            scale=scale
+        )
+        
+        features = reduced.getInfo().get("features", [])
+        result = {}
+        for f in features:
+            props = f.get("properties", {})
+            name = props.get("shapeName")
+            val = props.get("mean")
+            if val is None:
+                val = props.get(band_name)
+            result[name] = val
+    except Exception as e:
+        print(f"Error computing all regions data for {index} in {year}: {e}")
+        result = {}
 
     # Save to cache
     _regions_cache[cache_key] = result
@@ -360,7 +364,7 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
             end = ee.Date.fromYMD(y, 12, 31)
             img = (
                 ee.ImageCollection(GRACE_DATASET)
-                .select("lwe_thickness_csr")
+                .select("lwe_thickness")
                 .filterDate(start, end)
                 .mean()
             )
@@ -370,7 +374,7 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
                 scale=55000,
                 maxPixels=1e9,
                 bestEffort=True,
-            ).get("lwe_thickness_csr")
+            ).get("lwe_thickness")
             return ee.Feature(None, {"year": y, "value": val})
 
         results = ee.FeatureCollection(ee_years.map(compute_year_gw))
@@ -441,7 +445,7 @@ def get_tile_url(year: int, index: str) -> str:
     if index_lower in ["groundwater", "grace"]:
         image = (
             ee.ImageCollection(GRACE_DATASET)
-            .select("lwe_thickness_csr")
+            .select("lwe_thickness")
             .filterDate(f"{year}-01-01", f"{year}-12-31")
             .mean()
             .clip(morocco_border)
@@ -506,7 +510,7 @@ def get_point_data(lat: float, lon: float, year: int) -> dict:
     try:
         grace = (
             ee.ImageCollection(GRACE_DATASET)
-            .select("lwe_thickness_csr")
+            .select("lwe_thickness")
             .filterDate(f"{year}-01-01", f"{year}-12-31")
             .mean()
         )
@@ -514,7 +518,7 @@ def get_point_data(lat: float, lon: float, year: int) -> dict:
             reducer=ee.Reducer.mean(),
             geometry=point.buffer(25000),
             scale=25000
-        ).get("lwe_thickness_csr").getInfo()
+        ).get("lwe_thickness").getInfo()
     except Exception as e:
         print(f"EE Point GW error: {e}")
         gw_val = None
