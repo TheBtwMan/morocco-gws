@@ -254,11 +254,7 @@ function App() {
               className={activeFilter === 'Land Use' ? 'active' : ''}>
               Land Use
             </button>
-            <button
-              onClick={() => setActiveFilter('Decision Making')}
-              className={activeFilter === 'Decision Making' ? 'active' : ''}>
-              Decision Making
-            </button>
+
           </div>
           <div className="map-canvas">
             <MoroccoMap selectedYear={selectedYear} activeFilter={activeFilter} adminLevel={adminLevel} />

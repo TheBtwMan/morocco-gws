@@ -79,6 +79,8 @@ body {
   font-size: 12px;
   cursor: pointer;
   letter-spacing: 1px;
+  flex: 1;
+  text-align: center;
 }
 
 .toolbar button:hover {
