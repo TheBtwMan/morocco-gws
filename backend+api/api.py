@@ -54,6 +54,11 @@ def get_tile(index: str, year: int):
     - **index**: 'groundwater', 'ndwi', or 'ndvi'
     - **year**: e.g. 2020
     """
+    index_lower = index.lower()
+    if index_lower in ["groundwater", "grace"] and (year < 2002 or year > 2024):
+        raise HTTPException(status_code=400, detail=f"GRACE groundwater data is only available from 2002 to 2024. Received year={year}.")
+    if index_lower in ["surface water", "ndwi", "land use", "ndvi"] and (year < 2017 or year > 2024):
+        raise HTTPException(status_code=400, detail=f"Sentinel-2 data ({index}) is only available from 2017 to 2024. Received year={year}.")
     try:
         tile_url = backend.get_tile_url(year, index)
         return {"index": index, "year": year, "tile_url": tile_url}
@@ -108,6 +113,11 @@ def get_all_regions(index: str, year: int):
     - **index**: 'groundwater', 'ndwi', or 'ndvi'
     - **year**: e.g. 2020
     """
+    index_lower = index.lower()
+    if index_lower in ["groundwater", "grace"] and (year < 2002 or year > 2024):
+        raise HTTPException(status_code=400, detail=f"GRACE groundwater data is only available from 2002 to 2024. Received year={year}.")
+    if index_lower in ["ndwi", "ndvi"] and (year < 2017 or year > 2024):
+        raise HTTPException(status_code=400, detail=f"Sentinel-2 data ({index}) is only available from 2017 to 2024. Received year={year}.")
     try:
         data = backend.get_all_regions_data(year, index)
         return {"index": index, "year": year, "regions": data}
@@ -176,6 +186,8 @@ def chat_query(request: ChatRequest):
 @app.get("/data/point")
 def get_point_data(lat: float = Query(..., description="Latitude"), lon: float = Query(..., description="Longitude"), year: int = Query(..., description="Year")):
     """Returns Groundwater, NDWI, and NDVI values for a specific coordinate point and year."""
+    if year < 2002 or year > 2024:
+        raise HTTPException(status_code=400, detail=f"Data is only available from 2002 to 2024. Received year={year}.")
     try:
         data = backend.get_point_data(lat, lon, year)
         return data

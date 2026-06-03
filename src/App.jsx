@@ -228,10 +228,21 @@ function App() {
   const [selectedYear, setSelectedYear] = useState(2003);
   const [adminLevel, setAdminLevel] = useState('admin0-all');
   
+  const minYear = activeFilter === 'Groundwater' ? 2003 : 2017;
+  const maxYear = 2024;
+
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    // Auto-clamp year if switching to a Sentinel-2 index while year is too low
+    if (filter !== 'Groundwater' && selectedYear < 2017) {
+      setSelectedYear(2017);
+    }
+  };
+
   return (
     <div className="platform">
       <header className="topbar">
-        <span>PLATEFORM GeoAi</span>
+        <span>PLATEFORME GeoAI</span>
       </header>
       <main className="layout">
         <aside className="sidebar">
@@ -240,17 +251,17 @@ function App() {
         <section className="map-area">
           <div className="toolbar">
             <button
-              onClick={() => setActiveFilter('Groundwater')}
+              onClick={() => handleFilterChange('Groundwater')}
               className={activeFilter === 'Groundwater' ? 'active' : ''}>
               Groundwater
             </button>
             <button
-              onClick={() => setActiveFilter('Surface Water')}
+              onClick={() => handleFilterChange('Surface Water')}
               className={activeFilter === 'Surface Water' ? 'active' : ''}>
               Surface Water
             </button>
             <button
-              onClick={() => setActiveFilter('Land Use')}
+              onClick={() => handleFilterChange('Land Use')}
               className={activeFilter === 'Land Use' ? 'active' : ''}>
               Land Use
             </button>
@@ -263,7 +274,7 @@ function App() {
         <aside className="info-panel">
           <div>
             <label>YEAR</label>
-            <input type="range" min="2003" max="2024" step="1" defaultValue="2003" onChange={(e) => setSelectedYear(e.target.value)} />
+            <input type="range" min={minYear} max={maxYear} step="1" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} />
             <span>{selectedYear}</span>
           </div>
           <div className="admin-buttons">
