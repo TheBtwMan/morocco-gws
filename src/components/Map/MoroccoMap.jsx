@@ -56,7 +56,7 @@ function SpatialInspectorCard({ inspector, onClose }) {
     if (!data) return { title: "N/A", desc: "No indices loaded." };
 
     const { groundwater, ndwi, ndvi } = data;
-    
+
     const gw = groundwater !== null ? groundwater : -0.5;
     const water = ndwi !== null ? ndwi : -0.1;
     const veg = ndvi !== null ? ndvi : 0.25;
@@ -207,7 +207,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
   const findNearestCommune = (lat, lon) => {
     let nearest = COMMUNE_COORDINATES[0];
     let minDist = Infinity;
-    
+
     for (const item of COMMUNE_COORDINATES) {
       const dist = Math.pow(lat - item.lat, 2) + Math.pow(lon - item.lon, 2);
       if (dist < minDist) {
@@ -341,7 +341,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
     } else {
       container.classList.remove('inspecting-cursor');
     }
-    
+
     // Close inspector card when mode resets
     handleCloseInspector();
   }, [adminLevel]);
@@ -439,7 +439,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
       bottom: '24px',
       right: '24px',
       zIndex: 1000,
-      background: 'rgba(255, 255, 255, 0.95)',
+      background: 'transparent',
       padding: '16px',
       borderRadius: '12px',
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
@@ -459,49 +459,44 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
       paddingBottom: '6px'
     };
 
-    if (activeFilter === 'Groundwater') {
-      return (
-        <div style={cardStyle}>
-          <h4 style={titleStyle}>Indice de Nappe (GW)</h4>
-          <div style={{ fontSize: '12px', color: '#475569', marginBottom: '8px' }}>
-            Anomalie de l'eau (CSR)
-          </div>
-          <div style={{
-            background: 'linear-gradient(to right, white, cyan, blue)',
-            height: '14px',
-            borderRadius: '4px',
-            margin: '8px 0 6px',
-            border: '1px solid rgba(0,0,0,0.1)'
-          }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748B', fontWeight: 'bold' }}>
-            <span>Sec (-1.5 cm)</span>
-            <span>Humide (+1.5 cm)</span>
-          </div>
-        </div>
-      );
-    }
+    let legendItems = [];
+    let title = "";
 
-    const legendItems = activeFilter === 'Surface Water' ? [
-      { label: "Eau Permanente (0.5)", color: "#0000CD" },
-      { label: "Plans d'eau (0.3)", color: "#1E90FF" },
-      { label: "Eau peu profonde (0.1)", color: "#87CEEB" },
-      { label: "Sol Humide (0.0)", color: "#FFFACD" },
-      { label: "Terre Sèche (-0.2)", color: "#D2691E" },
-      { label: "Zone Très Sèche (-0.5)", color: "#8B4513" },
-    ] : [
-      { label: "Forêt Dense (0.7+)", color: "#056201" },
-      { label: "Végétation Moyenne (0.5)", color: "#74A901" },
-      { label: "Végétation Éparse (0.3)", color: "#FCD163" },
-      { label: "Agriculture (0.2)", color: "#99B718" },
-      { label: "Sol Nu (0.1)", color: "#CE7E45" },
-      { label: "Pas de Végétation (0.0)", color: "#FFFFFF" },
-    ];
+    if (activeFilter === 'Groundwater') {
+      title = "GWSA - Groundwater storage Anomaly";
+      legendItems = [
+        { label: "High Surplus (+3.0 to +4.0 cm)", color: "#4575b4" },
+        { label: "Moderate Surplus (+2.0 to +3.0 cm)", color: "#91bfdb" },
+        { label: "Mild Surplus (+1.0 to +2.0 cm)", color: "#e0f3f8" },
+        { label: "Normal / Stable (0.0 to +1.0 cm)", color: "#fee090" },
+        { label: "Moderate Deficit (-1.0 to 0.0 cm)", color: "#fc8d59" },
+        { label: "Severe Deficit (-2.0 to -1.0 cm)", color: "#d73027" },
+      ];
+    } else if (activeFilter === 'Surface Water') {
+      title = "NDWI - Surface Water";
+      legendItems = [
+        { label: "Permanent Water (0.5)", color: "#0000CD" },
+        { label: "Water Bodies (0.3)", color: "#1E90FF" },
+        { label: "Shallow Water (0.1)", color: "#87CEEB" },
+        { label: "Wet / Humid Soil (0.0)", color: "#FFFACD" },
+        { label: "Dry Soil (-0.2)", color: "#D2691E" },
+        { label: "Very Dry Soil (-0.5)", color: "#8B4513" },
+      ];
+    } else {
+      title = "NDVI - Land Use / Vegetation";
+      legendItems = [
+        { label: "Dense Forest (0.7+)", color: "#056201" },
+        { label: "Moderate Vegetation (0.5)", color: "#74A901" },
+        { label: "Sparse Vegetation (0.3)", color: "#FCD163" },
+        { label: "Cropland / Agriculture (0.2)", color: "#99B718" },
+        { label: "Bare Soil (0.1)", color: "#CE7E45" },
+        { label: "No Vegetation (0.0)", color: "#FFFFFF" },
+      ];
+    }
 
     return (
       <div style={cardStyle}>
-        <h4 style={titleStyle}>
-          {activeFilter === 'Surface Water' ? 'Indice NDWI - Eau' : 'Indice NDVI - Végétation'}
-        </h4>
+        <h4 style={titleStyle}>{title}</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {legendItems.map((item, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11.5px', color: '#334155' }}>

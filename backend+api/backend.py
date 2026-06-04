@@ -6,6 +6,8 @@ import os
 
 # Simple in-memory cache for get_all_regions_data results
 _regions_cache = {}
+# Simple in-memory cache for tile URLs
+_tile_url_cache = {}
 
 
 EE_PROJECT = "optical-genre-493118-h1"
@@ -48,8 +50,78 @@ def get_morocco_regions() -> ee.FeatureCollection:
     return _morocco_regions_fc
 map_dataset = "USDOS/LSIB_SIMPLE/2017"
 GRACE_DATASET = "NASA/GRACE/MASS_GRIDS_V04/MASCON"
+GLDAS_DATASET = "NASA/GLDAS/V021/NOAH/G025/T3H"
 SENTINEL2_DATASET = "COPERNICUS/S2_SR_HARMONIZED"
 MAX_CLOUD_PERCENT = 20
+
+# GRACE MASCON v04 uses 2004-2009 as the baseline period for anomalies
+GRACE_BASELINE_START = 2004
+GRACE_BASELINE_END = 2009
+
+# GLDAS bands used to estimate non-groundwater water storage
+_GLDAS_BANDS = [
+    "SoilMoi0_10cm_inst",
+    "SoilMoi10_40cm_inst",
+    "SoilMoi40_100cm_inst",
+    "SoilMoi100_200cm_inst",
+    "SWE_inst",
+    "CanopInt_inst",
+]
+
+# Cache for the GLDAS baseline mean (computed once, reused forever)
+_gldas_baseline_image = None
+
+
+def _get_gldas_baseline() -> ee.Image:
+    """Returns the mean GLDAS surface water storage over the GRACE baseline period (2004-2009).
+    Result is the sum of soil moisture + SWE + canopy in cm of water equivalent."""
+    global _gldas_baseline_image
+    if _gldas_baseline_image is not None:
+        return _gldas_baseline_image
+
+    baseline = (
+        ee.ImageCollection(GLDAS_DATASET)
+        .select(_GLDAS_BANDS)
+        .filterDate(f"{GRACE_BASELINE_START}-01-01", f"{GRACE_BASELINE_END + 1}-01-01")
+        .mean()
+    )
+    # Sum all components and convert kg/m² (mm) to cm
+    _gldas_baseline_image = baseline.reduce(ee.Reducer.sum()).divide(10).rename("surface_storage")
+    return _gldas_baseline_image
+
+
+def _get_gldas_annual(year: int) -> ee.Image:
+    """Returns the annual mean GLDAS surface water storage for a given year, in cm."""
+    annual = (
+        ee.ImageCollection(GLDAS_DATASET)
+        .select(_GLDAS_BANDS)
+        .filterDate(f"{year}-01-01", f"{year + 1}-01-01")
+        .mean()
+    )
+    return annual.reduce(ee.Reducer.sum()).divide(10).rename("surface_storage")
+
+
+def get_groundwater_image(year: int) -> ee.Image:
+    """Computes true Groundwater Storage Anomaly (GWSA) for a given year.
+    GWSA = GRACE_TWSA - (GLDAS_annual - GLDAS_baseline)
+    Returns a single-band ee.Image named 'groundwater'."""
+    # 1. GRACE Total Water Storage Anomaly (already an anomaly vs 2004-2009 baseline)
+    grace_twsa = (
+        ee.ImageCollection(GRACE_DATASET)
+        .select("lwe_thickness")
+        .filterDate(f"{year}-01-01", f"{year + 1}-01-01")
+        .mean()
+    )
+
+    # 2. GLDAS surface storage anomaly (annual - baseline), in cm
+    gldas_baseline = _get_gldas_baseline()
+    gldas_annual = _get_gldas_annual(year)
+    gldas_anomaly = gldas_annual.subtract(gldas_baseline)
+
+    # 3. Subtract to isolate groundwater: GWSA = TWSA - surface_anomaly
+    gwsa = grace_twsa.subtract(gldas_anomaly).rename("groundwater")
+
+    return gwsa
 
 
 def get_boundary() -> ee.Geometry:
@@ -95,21 +167,14 @@ def get_region(region_name: str) -> ee.Geometry:
 
 
 def groundwater(year: int) -> geemap.Map:
-    # Loads GRACE LWE data for the given year, clips to Morocco, displays on a map with a white-cyan-blue color scale
-    grace = (
-        ee.ImageCollection(GRACE_DATASET)
-        .select("lwe_thickness")
-        .filterDate(f"{year}-01-01", f"{year}-12-31")
-        .mean()
-    )
-
+    # Computes true Groundwater Storage Anomaly (GWSA) for the given year, clips to Morocco
     morocco_border = get_boundary()
-    ground_water = grace.clip(morocco_border)
+    ground_water = get_groundwater_image(year).resample('bilinear').clip(morocco_border)
 
     gw_vis = {
-        "min": -1.5,
-        "max": 1.5,
-        "palette": ["white", "cyan", "blue"],
+        "min": -2,
+        "max": 4,
+        "palette": ["#d73027", "#fc8d59", "#fee090", "#e0f3f8", "#91bfdb", "#4575b4"],
     }
 
     Map = geemap.Map()
@@ -217,15 +282,10 @@ def get_annual_ndvi_map(year: int) -> geemap.Map:
 
 
 def groundwater_data(year: int, region: ee.Geometry) -> dict:
-    # Loads GRACE data for the year, computes the spatial mean LWE (cm) inside the given region, returns as dict
-    grace = (
-        ee.ImageCollection(GRACE_DATASET)
-        .select("lwe_thickness")
-        .filterDate(f"{year}-01-01", f"{year}-12-31")
-        .mean()
-    )
+    # Computes true GWSA for the year, returns spatial mean (cm) inside the given region as dict
+    gwsa = get_groundwater_image(year)
 
-    data = grace.reduceRegion(
+    data = gwsa.reduceRegion(
         reducer=ee.Reducer.mean(),
         geometry=region,
         scale=55000,
@@ -290,13 +350,8 @@ def get_all_regions_data(year: int, index: str) -> dict:
     regions = get_morocco_regions().filter(ee.Filter.eq("shapeGroup", "MAR"))
     index_lower = index.lower()
     if index_lower == "groundwater":
-        image = (
-            ee.ImageCollection(GRACE_DATASET)
-            .select("lwe_thickness")
-            .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .mean()
-        )
-        band_name = "lwe_thickness"
+        image = get_groundwater_image(year)
+        band_name = "groundwater"
         scale = 55000
     elif index_lower == "ndwi":
         image = (
@@ -362,19 +417,29 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
             y = ee.Number(y)
             start = ee.Date.fromYMD(y, 1, 1)
             end = ee.Date.fromYMD(y, 12, 31)
-            img = (
+            # GRACE TWSA
+            grace_twsa = (
                 ee.ImageCollection(GRACE_DATASET)
                 .select("lwe_thickness")
                 .filterDate(start, end)
                 .mean()
             )
-            val = img.reduceRegion(
+            # GLDAS surface storage for this year
+            gldas_year = (
+                ee.ImageCollection(GLDAS_DATASET)
+                .select(_GLDAS_BANDS)
+                .filterDate(start, end)
+                .mean()
+            ).reduce(ee.Reducer.sum()).divide(10).rename("surface_storage")
+            gldas_anomaly = gldas_year.subtract(_get_gldas_baseline())
+            gwsa = grace_twsa.subtract(gldas_anomaly).rename("groundwater")
+            val = gwsa.reduceRegion(
                 reducer=ee.Reducer.mean(),
                 geometry=region_geom,
                 scale=55000,
                 maxPixels=1e9,
                 bestEffort=True,
-            ).get("lwe_thickness")
+            ).get("groundwater")
             return ee.Feature(None, {"year": y, "value": val})
 
         results = ee.FeatureCollection(ee_years.map(compute_year_gw))
@@ -439,21 +504,19 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
 
 def get_tile_url(year: int, index: str) -> str:
     # Generates a map tile URL for the specified index and year, allowing the frontend to overlay the satellite layer on a map
-    morocco_border = get_boundary()
     index_lower = index.lower()
+    cache_key = f"{index_lower}_{year}"
+    if cache_key in _tile_url_cache:
+        return _tile_url_cache[cache_key]
+
+    morocco_border = get_boundary()
     
     if index_lower in ["groundwater", "grace"]:
-        image = (
-            ee.ImageCollection(GRACE_DATASET)
-            .select("lwe_thickness")
-            .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .mean()
-            .clip(morocco_border)
-        )
+        image = get_groundwater_image(year).resample('bilinear').clip(morocco_border)
         vis_params = {
-            "min": -1.5,
-            "max": 1.5,
-            "palette": ["white", "cyan", "blue"],
+            "min": -2,
+            "max": 4,
+            "palette": ["#d73027", "#fc8d59", "#fee090", "#e0f3f8", "#91bfdb", "#4575b4"],
         }
     elif index_lower in ["surface water", "ndwi"]:
         image = (
@@ -496,7 +559,9 @@ def get_tile_url(year: int, index: str) -> str:
         raise ValueError(f"Invalid index '{index}'. Use 'groundwater', 'surface water' (ndwi), or 'land use' (ndvi).")
         
     map_id = image.getMapId(vis_params)
-    return map_id["tile_fetcher"].url_format
+    tile_url = map_id["tile_fetcher"].url_format
+    _tile_url_cache[cache_key] = tile_url
+    return tile_url
 
 def get_point_data(lat: float, lon: float, year: int) -> dict:
     """
@@ -506,19 +571,14 @@ def get_point_data(lat: float, lon: float, year: int) -> dict:
     """
     point = ee.Geometry.Point([lon, lat])
     
-    # 1. Groundwater
+    # 1. Groundwater (true GWSA = GRACE TWSA - GLDAS surface anomaly)
     try:
-        grace = (
-            ee.ImageCollection(GRACE_DATASET)
-            .select("lwe_thickness")
-            .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .mean()
-        )
-        gw_val = grace.reduceRegion(
+        gwsa = get_groundwater_image(year)
+        gw_val = gwsa.reduceRegion(
             reducer=ee.Reducer.mean(),
             geometry=point.buffer(25000),
             scale=25000
-        ).get("lwe_thickness").getInfo()
+        ).get("groundwater").getInfo()
     except Exception as e:
         print(f"EE Point GW error: {e}")
         gw_val = None

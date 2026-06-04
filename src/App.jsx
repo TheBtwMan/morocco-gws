@@ -225,18 +225,14 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
 
 function App() {
   const [activeFilter, setActiveFilter] = useState('Groundwater');
-  const [selectedYear, setSelectedYear] = useState(2003);
+  const [selectedYear, setSelectedYear] = useState(2017);
   const [adminLevel, setAdminLevel] = useState('admin0-all');
   
-  const minYear = activeFilter === 'Groundwater' ? 2003 : 2017;
+  const minYear = 2017;
   const maxYear = 2024;
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
-    // Auto-clamp year if switching to a Sentinel-2 index while year is too low
-    if (filter !== 'Groundwater' && selectedYear < 2017) {
-      setSelectedYear(2017);
-    }
   };
 
   return (
