@@ -226,10 +226,21 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
 function App() {
   const [activeFilter, setActiveFilter] = useState('Groundwater');
   const [selectedYear, setSelectedYear] = useState(2017);
+  const [debouncedYear, setDebouncedYear] = useState(2017);
   const [adminLevel, setAdminLevel] = useState('admin0-all');
   
   const minYear = 2017;
   const maxYear = 2024;
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedYear(selectedYear);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [selectedYear]);
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
@@ -242,7 +253,7 @@ function App() {
       </header>
       <main className="layout">
         <aside className="sidebar">
-          <GeoAIChat currentYear={selectedYear} currentIndex={activeFilter} />
+          <GeoAIChat currentYear={debouncedYear} currentIndex={activeFilter} />
         </aside>
         <section className="map-area">
           <div className="toolbar">
@@ -264,7 +275,7 @@ function App() {
 
           </div>
           <div className="map-canvas">
-            <MoroccoMap selectedYear={selectedYear} activeFilter={activeFilter} adminLevel={adminLevel} />
+            <MoroccoMap selectedYear={debouncedYear} activeFilter={activeFilter} adminLevel={adminLevel} />
           </div>
         </section>
         <aside className="info-panel">
