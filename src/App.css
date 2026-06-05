@@ -78,7 +78,7 @@ body.platform-active {
   background: transparent;
   border: 1px solid #7BD4E9;
   color: #7BD4E9;
-  padding: 6px 14px;
+  padding: 6px 1px;
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
@@ -715,4 +715,65 @@ body.platform-active {
   box-shadow: 0 0 10px rgba(123, 212, 233, 0.3);
   transform: translateY(-1px);
 }
-
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Groundwater Dropdown Styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.dropdown-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+
+.dropdown-trigger {
+  width: 100%;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1a1a22;
+  border: 1px solid #7BD4E9;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  z-index: 1002;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.toolbar .dropdown-item {
+  background: #1a1a22;
+  border: none;
+  border-bottom: 1px solid #282835;
+  color: #cbd5e1;
+  padding: 8px 12px;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  border-radius: 0;
+  letter-spacing: 0.5px;
+  flex: none;
+  text-shadow: none;
+}
+
+.toolbar .dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.toolbar .dropdown-item:hover {
+  background: rgba(123, 212, 233, 0.15);
+  color: #FFFFFF;
+}
+
+.toolbar .dropdown-item.selected {
+  background: rgba(123, 212, 233, 0.3);
+  color: #7BD4E9;
+  font-weight: bold;
+}
+

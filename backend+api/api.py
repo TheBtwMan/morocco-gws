@@ -51,12 +51,12 @@ def get_tile(index: str, year: int):
     """
     Returns a tile URL for a given index and year.
     
-    - **index**: 'groundwater', 'ndwi', or 'ndvi'
+    - **index**: 'gwsa', 'ndwi', or 'ndvi'
     - **year**: e.g. 2020
     """
     index_lower = index.lower()
-    if index_lower in ["groundwater", "grace"] and (year < 2002 or year > 2024):
-        raise HTTPException(status_code=400, detail=f"GRACE groundwater data is only available from 2002 to 2024. Received year={year}.")
+    if index_lower in ["gwsa", "gwd", "grace"] and (year < 2002 or year > 2024):
+        raise HTTPException(status_code=400, detail=f"GRACE Groundwater Storage Anomaly data is only available from 2002 to 2024. Received year={year}.")
     if index_lower in ["surface water", "ndwi", "land use", "ndvi"] and (year < 2017 or year > 2024):
         raise HTTPException(status_code=400, detail=f"Sentinel-2 data ({index}) is only available from 2017 to 2024. Received year={year}.")
     try:
@@ -70,12 +70,23 @@ def get_tile(index: str, year: int):
 
 # ── Single region data ───────────────────────────────────────────────────────
 
-@app.get("/data/groundwater/{year}")
-def get_groundwater_data(year: int, region: str = Query(..., description="Region name")):
-    """Returns mean groundwater anomaly (cm) for a region and year."""
+@app.get("/data/gwsa/{year}")
+def get_gwsa_data(year: int, region: str = Query(..., description="Region name")):
+    """Returns mean Groundwater Storage Anomaly (cm) for a region and year."""
     try:
         region_geom = backend.get_region(region)
-        data = backend.groundwater_data(year, region_geom)
+        data = backend.gwsa_data(year, region_geom)
+        return {"region": region, "year": year, "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/data/gwd/{year}")
+def get_gwd_data(year: int, region: str = Query(..., description="Region name")):
+    """Returns mean Groundwater Depth Change (m) for a region and year."""
+    try:
+        region_geom = backend.get_region(region)
+        data = backend.gwd_data(year, region_geom)
         return {"region": region, "year": year, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -110,12 +121,12 @@ def get_all_regions(index: str, year: int):
     """
     Returns mean index value for all 12 Moroccan regions in one call.
     
-    - **index**: 'groundwater', 'ndwi', or 'ndvi'
+    - **index**: 'gwsa', 'ndwi', or 'ndvi'
     - **year**: e.g. 2020
     """
     index_lower = index.lower()
-    if index_lower in ["groundwater", "grace"] and (year < 2002 or year > 2024):
-        raise HTTPException(status_code=400, detail=f"GRACE groundwater data is only available from 2002 to 2024. Received year={year}.")
+    if index_lower in ["gwsa", "gwd", "grace"] and (year < 2002 or year > 2024):
+        raise HTTPException(status_code=400, detail=f"GRACE Groundwater Storage Anomaly data is only available from 2002 to 2024. Received year={year}.")
     if index_lower in ["ndwi", "ndvi"] and (year < 2017 or year > 2024):
         raise HTTPException(status_code=400, detail=f"Sentinel-2 data ({index}) is only available from 2017 to 2024. Received year={year}.")
     try:

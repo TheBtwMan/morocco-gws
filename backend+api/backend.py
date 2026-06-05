@@ -101,10 +101,10 @@ def _get_gldas_annual(year: int) -> ee.Image:
     return annual.reduce(ee.Reducer.sum()).divide(10).rename("surface_storage")
 
 
-def get_groundwater_image(year: int) -> ee.Image:
+def get_gwsa_image(year: int) -> ee.Image:
     """Computes true Groundwater Storage Anomaly (GWSA) for a given year.
     GWSA = GRACE_TWSA - (GLDAS_annual - GLDAS_baseline)
-    Returns a single-band ee.Image named 'groundwater'."""
+    Returns a single-band ee.Image named 'gwsa'."""
     # 1. GRACE Total Water Storage Anomaly (already an anomaly vs 2004-2009 baseline)
     grace_twsa = (
         ee.ImageCollection(GRACE_DATASET)
@@ -119,9 +119,49 @@ def get_groundwater_image(year: int) -> ee.Image:
     gldas_anomaly = gldas_annual.subtract(gldas_baseline)
 
     # 3. Subtract to isolate groundwater: GWSA = TWSA - surface_anomaly
-    gwsa = grace_twsa.subtract(gldas_anomaly).rename("groundwater")
+    gwsa = grace_twsa.subtract(gldas_anomaly).rename("gwsa")
 
     return gwsa
+
+
+# OpenLandMap sand fraction dataset used to derive spatially-varying Specific Yield (Sy)
+# Sy varies from ~0.046 (clay) to ~0.27 (sand) based on the USGS empirical relationship
+OPENLANDMAP_SAND = "OpenLandMap/SOL/SOL_SAND-WFRACTION_USDA-3A1A1A_M/v02"
+
+# Cache for the Sy image (computed once, reused forever)
+_sy_image = None
+
+
+def _get_specific_yield_map() -> ee.Image:
+    """Builds a spatially-varying Specific Yield (Sy) map from OpenLandMap soil sand fraction.
+    Uses the USGS empirical pedotransfer function: Sy = 0.042 + 0.0023 × sand%
+    where sand% is the weight fraction of sand (0-100) at 0-10cm depth.
+    Resolution: 250m. Returns a single-band ee.Image named 'sy'."""
+    global _sy_image
+    if _sy_image is not None:
+        return _sy_image
+
+    # Load sand fraction (%) at shallowest depth layer (b0 = 0 cm)
+    sand_pct = ee.Image(OPENLANDMAP_SAND).select("b0")
+
+    # USGS empirical relationship: Sy = 0.042 + 0.0023 * sand(%)
+    # Clamp Sy to [0.02, 0.30] to avoid extreme outliers
+    sy = sand_pct.multiply(0.0023).add(0.042).clamp(0.02, 0.30).rename("sy")
+
+    _sy_image = sy
+    return _sy_image
+
+
+def get_gwd_image(year: int) -> ee.Image:
+    """Computes Groundwater Depth Change (GWD) in meters for a given year.
+    GWD = GWSA (cm) / (Sy × 100), where Sy is derived per-pixel from soil texture.
+    Positive = water table rising, Negative = water table dropping.
+    Returns a single-band ee.Image named 'gwd'."""
+    gwsa = get_gwsa_image(year).resample('bilinear')
+    sy = _get_specific_yield_map()
+    # Convert cm anomaly to meters of water table change: GWSA(cm) / (Sy * 100)
+    gwd = gwsa.divide(sy.multiply(100)).rename("gwd")
+    return gwd
 
 
 def get_boundary() -> ee.Geometry:
@@ -166,10 +206,10 @@ def get_region(region_name: str) -> ee.Geometry:
     return selected_region.geometry()
 
 
-def groundwater(year: int) -> geemap.Map:
+def gwsa_map(year: int) -> geemap.Map:
     # Computes true Groundwater Storage Anomaly (GWSA) for the given year, clips to Morocco
     morocco_border = get_boundary()
-    ground_water = get_groundwater_image(year).resample('bilinear').clip(morocco_border)
+    ground_water = get_gwsa_image(year).resample('bilinear').clip(morocco_border)
 
     gw_vis = {
         "min": -2,
@@ -179,11 +219,36 @@ def groundwater(year: int) -> geemap.Map:
 
     Map = geemap.Map()
     Map.centerObject(morocco_border, 5)
-    Map.addLayer(ground_water, gw_vis, f"Groundwater Anomaly {year}")
+    Map.addLayer(ground_water, gw_vis, f"Groundwater Storage Anomaly {year}")
     Map.add_colorbar(
         vis_params=gw_vis,
-        label="Groundwater Anomaly (cm)",
+        label="Groundwater Storage Anomaly (cm)",
         layer_name="GW_Colorbar",
+        orientation="horizontal",
+        transparent_bg=True,
+    )
+
+    return Map
+
+
+def gwd_map(year: int) -> geemap.Map:
+    # Computes Groundwater Depth Change (GWD) in meters for a given year, clips to Morocco
+    morocco_border = get_boundary()
+    gwd = get_gwd_image(year).clip(morocco_border)
+
+    gwd_vis = {
+        "min": -2,
+        "max": 2,
+        "palette": ["#d73027", "#fc8d59", "#fee090", "#e0f3f8", "#91bfdb", "#4575b4"],
+    }
+
+    Map = geemap.Map()
+    Map.centerObject(morocco_border, 5)
+    Map.addLayer(gwd, gwd_vis, f"Groundwater Depth Change {year}")
+    Map.add_colorbar(
+        vis_params=gwd_vis,
+        label="Groundwater Depth Change (m)",
+        layer_name="GWD_Colorbar",
         orientation="horizontal",
         transparent_bg=True,
     )
@@ -281,9 +346,9 @@ def get_annual_ndvi_map(year: int) -> geemap.Map:
     return Map
 
 
-def groundwater_data(year: int, region: ee.Geometry) -> dict:
+def gwsa_data(year: int, region: ee.Geometry) -> dict:
     # Computes true GWSA for the year, returns spatial mean (cm) inside the given region as dict
-    gwsa = get_groundwater_image(year)
+    gwsa = get_gwsa_image(year)
 
     data = gwsa.reduceRegion(
         reducer=ee.Reducer.mean(),
@@ -340,6 +405,19 @@ def ndvi_data(year: int, region: ee.Geometry) -> dict:
     return data.getInfo()
 
 
+def gwd_data(year: int, region: ee.Geometry) -> dict:
+    # Computes Groundwater Depth Change (GWD) in meters for a given year, returns spatial mean inside the given region as dict
+    gwd = get_gwd_image(year)
+
+    data = gwd.reduceRegion(
+        reducer=ee.Reducer.mean(),
+        geometry=region,
+        scale=55000,
+        maxPixels=1e9,
+    )
+    return data.getInfo()
+
+
 def get_all_regions_data(year: int, index: str) -> dict:
     # Computes spatial mean index values for all 12 Moroccan regions at once using reduceRegions to minimize GEE calls
     # Check cache first
@@ -349,9 +427,13 @@ def get_all_regions_data(year: int, index: str) -> dict:
 
     regions = get_morocco_regions().filter(ee.Filter.eq("shapeGroup", "MAR"))
     index_lower = index.lower()
-    if index_lower == "groundwater":
-        image = get_groundwater_image(year)
-        band_name = "groundwater"
+    if index_lower == "gwsa":
+        image = get_gwsa_image(year)
+        band_name = "gwsa"
+        scale = 55000
+    elif index_lower == "gwd":
+        image = get_gwd_image(year)
+        band_name = "gwd"
         scale = 55000
     elif index_lower == "ndwi":
         image = (
@@ -378,7 +460,7 @@ def get_all_regions_data(year: int, index: str) -> dict:
         band_name = "ndvi"
         scale = 10000
     else:
-        raise ValueError(f"Invalid index '{index}'. Use 'groundwater', 'ndwi', or 'ndvi'.")
+        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'ndwi', or 'ndvi'.")
 
     try:
         reduced = image.reduceRegions(
@@ -412,7 +494,7 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
     years = list(range(start_year, end_year + 1))
     ee_years = ee.List(years)
 
-    if index_lower in ["groundwater", "grace"]:
+    if index_lower in ["gwsa", "grace"]:
         def compute_year_gw(y):
             y = ee.Number(y)
             start = ee.Date.fromYMD(y, 1, 1)
@@ -432,17 +514,51 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
                 .mean()
             ).reduce(ee.Reducer.sum()).divide(10).rename("surface_storage")
             gldas_anomaly = gldas_year.subtract(_get_gldas_baseline())
-            gwsa = grace_twsa.subtract(gldas_anomaly).rename("groundwater")
+            gwsa = grace_twsa.subtract(gldas_anomaly).rename("gwsa")
             val = gwsa.reduceRegion(
                 reducer=ee.Reducer.mean(),
                 geometry=region_geom,
                 scale=55000,
                 maxPixels=1e9,
                 bestEffort=True,
-            ).get("groundwater")
+            ).get("gwsa")
             return ee.Feature(None, {"year": y, "value": val})
 
         results = ee.FeatureCollection(ee_years.map(compute_year_gw))
+
+    elif index_lower in ["gwd", "groundwater depth"]:
+        def compute_year_gwd(y):
+            y = ee.Number(y)
+            start = ee.Date.fromYMD(y, 1, 1)
+            end = ee.Date.fromYMD(y, 12, 31)
+            # GRACE TWSA
+            grace_twsa = (
+                ee.ImageCollection(GRACE_DATASET)
+                .select("lwe_thickness")
+                .filterDate(start, end)
+                .mean()
+            )
+            # GLDAS surface storage for this year
+            gldas_year = (
+                ee.ImageCollection(GLDAS_DATASET)
+                .select(_GLDAS_BANDS)
+                .filterDate(start, end)
+                .mean()
+            ).reduce(ee.Reducer.sum()).divide(10).rename("surface_storage")
+            gldas_anomaly = gldas_year.subtract(_get_gldas_baseline())
+            gwsa = grace_twsa.subtract(gldas_anomaly).rename("gwsa")
+            sy = _get_specific_yield_map()
+            gwd = gwsa.divide(sy.multiply(100)).rename("gwd")
+            val = gwd.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=region_geom,
+                scale=55000,
+                maxPixels=1e9,
+                bestEffort=True,
+            ).get("gwd")
+            return ee.Feature(None, {"year": y, "value": val})
+
+        results = ee.FeatureCollection(ee_years.map(compute_year_gwd))
 
     elif index_lower == "ndwi":
         def compute_year_ndwi(y):
@@ -493,7 +609,7 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
         results = ee.FeatureCollection(ee_years.map(compute_year_ndvi))
 
     else:
-        raise ValueError(f"Invalid index '{index}'. Use 'groundwater', 'ndwi', or 'ndvi'.")
+        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'ndwi', or 'ndvi'.")
 
     features = results.getInfo().get("features", [])
     return {
@@ -511,8 +627,8 @@ def get_tile_url(year: int, index: str) -> str:
 
     morocco_border = get_boundary()
     
-    if index_lower in ["groundwater", "grace"]:
-        image = get_groundwater_image(year).resample('bilinear').clip(morocco_border)
+    if index_lower in ["gwsa"]:
+        image = get_gwsa_image(year).resample('bilinear').clip(morocco_border)
         vis_params = {
             "min": -2,
             "max": 4,
@@ -555,8 +671,15 @@ def get_tile_url(year: int, index: str) -> str:
                 "#207401", "#056201",
             ],
         }
+    elif index_lower in ["gwd", "groundwater depth"]:
+        image = get_gwd_image(year).clip(morocco_border)
+        vis_params = {
+            "min": -2,
+            "max": 2,
+            "palette": ["#d73027", "#fc8d59", "#fee090", "#e0f3f8", "#91bfdb", "#4575b4"],
+        }
     else:
-        raise ValueError(f"Invalid index '{index}'. Use 'groundwater', 'surface water' (ndwi), or 'land use' (ndvi).")
+        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'surface water' (ndwi), or 'land use' (ndvi).")
         
     map_id = image.getMapId(vis_params)
     tile_url = map_id["tile_fetcher"].url_format
@@ -571,19 +694,31 @@ def get_point_data(lat: float, lon: float, year: int) -> dict:
     """
     point = ee.Geometry.Point([lon, lat])
     
-    # 1. Groundwater (true GWSA = GRACE TWSA - GLDAS surface anomaly)
+    # 1. Groundwater Storage Anomaly (GWSA = GRACE TWSA - GLDAS surface anomaly)
     try:
-        gwsa = get_groundwater_image(year)
+        gwsa = get_gwsa_image(year)
         gw_val = gwsa.reduceRegion(
             reducer=ee.Reducer.mean(),
             geometry=point.buffer(25000),
             scale=25000
-        ).get("groundwater").getInfo()
+        ).get("gwsa").getInfo()
     except Exception as e:
         print(f"EE Point GW error: {e}")
         gw_val = None
 
-    # 2. NDWI
+    # 2. Groundwater Depth Change (GWD)
+    try:
+        gwd = get_gwd_image(year)
+        gwd_val = gwd.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=point.buffer(25000),
+            scale=25000
+        ).get("gwd").getInfo()
+    except Exception as e:
+        print(f"EE Point GWD error: {e}")
+        gwd_val = None
+
+    # 3. NDWI
     try:
         ndwi_img = (
             ee.ImageCollection(SENTINEL2_DATASET)
@@ -603,7 +738,7 @@ def get_point_data(lat: float, lon: float, year: int) -> dict:
         print(f"EE Point NDWI error: {e}")
         ndwi_val = None
 
-    # 3. NDVI
+    # 4. NDVI
     try:
         ndvi_img = (
             ee.ImageCollection(SENTINEL2_DATASET)
@@ -627,7 +762,8 @@ def get_point_data(lat: float, lon: float, year: int) -> dict:
         "lat": lat,
         "lon": lon,
         "year": year,
-        "groundwater": gw_val,
+        "gwsa": gw_val,
+        "gwd": gwd_val,
         "ndwi": ndwi_val,
         "ndvi": ndvi_val
     }

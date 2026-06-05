@@ -240,7 +240,8 @@ function App() {
   const [view, setView] = useState('landing');
   const [initialQuery, setInitialQuery] = useState(null);
 
-  const [activeFilter, setActiveFilter] = useState('Groundwater');
+  const [activeFilter, setActiveFilter] = useState('GWSA');
+  const [gwDropdownOpen, setGwDropdownOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(2017);
   const [debouncedYear, setDebouncedYear] = useState(2017);
   const [adminLevel, setAdminLevel] = useState('admin0-all');
@@ -312,11 +313,42 @@ function App() {
         </aside>
         <section className="map-area">
           <div className="toolbar">
-            <button
-              onClick={() => handleFilterChange('Groundwater')}
-              className={activeFilter === 'Groundwater' ? 'active' : ''}>
-              Groundwater
-            </button>
+            <div 
+              className="dropdown-container"
+              onMouseLeave={() => setGwDropdownOpen(false)}
+            >
+              <button
+                type="button"
+                className={`dropdown-trigger ${activeFilter === 'GWSA' || activeFilter === 'GWD' ? 'active' : ''}`}
+                onClick={() => setGwDropdownOpen(!gwDropdownOpen)}
+              >
+                Groundwater {activeFilter === 'GWSA' ? 'storage anomaly' : activeFilter === 'GWD' ? 'depth' : ''} ▾
+              </button>
+              {gwDropdownOpen && (
+                <div className="dropdown-menu">
+                  <button
+                    type="button"
+                    className={`dropdown-item ${activeFilter === 'GWSA' ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleFilterChange('GWSA');
+                      setGwDropdownOpen(false);
+                    }}
+                  >
+                    Groundwater storage anomaly 
+                  </button>
+                  <button
+                    type="button"
+                    className={`dropdown-item ${activeFilter === 'GWD' ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleFilterChange('GWD');
+                      setGwDropdownOpen(false);
+                    }}
+                  >
+                    Groundwater depth 
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => handleFilterChange('Surface Water')}
               className={activeFilter === 'Surface Water' ? 'active' : ''}>

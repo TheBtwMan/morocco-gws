@@ -176,7 +176,7 @@ $$\text{NDWI} = \\frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$$
 """
 
     if "groundwater" in norm_msg or "grace" in norm_msg or "nappe" in norm_msg:
-        return """### 💧 Groundwater Anomaly (GRACE) Explained
+        return """### 💧 Groundwater Storage Anomaly (GRACE) Explained
 
 **Groundwater Anomaly** data is fetched from the joint NASA/DLR **GRACE-FO** (Gravity Recovery and Climate Experiment) satellites. It measures subtle changes in Earth's gravitational pull caused by shifts in water mass underground:
 
@@ -193,7 +193,7 @@ $$\text{NDWI} = \\frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$$
         try:
             # We query the exact index data from GEE backend!
             # Since fetching single regions is fast via our cached get_all_regions_data, we query all 3 indices!
-            gw_dataset = backend.get_all_regions_data(year, "groundwater")
+            gw_dataset = backend.get_all_regions_data(year, "gwsa")
             ndwi_dataset = backend.get_all_regions_data(year, "ndwi")
             ndvi_dataset = backend.get_all_regions_data(year, "ndvi")
             
@@ -223,6 +223,7 @@ $$\text{NDWI} = \\frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$$
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             try:
+                # pyrefly: ignore [missing-import]
                 import google.generativeai as genai
                 genai.configure(api_key=api_key)
                 

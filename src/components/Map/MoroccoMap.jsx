@@ -55,9 +55,9 @@ function SpatialInspectorCard({ inspector, onClose }) {
   const getSuitabilityAnalysis = () => {
     if (!data) return { title: "N/A", desc: "No indices loaded." };
 
-    const { groundwater, ndwi, ndvi } = data;
+    const { gwsa, ndwi, ndvi } = data;
 
-    const gw = groundwater !== null ? groundwater : -0.5;
+    const gw = gwsa !== null ? gwsa : -0.5;
     const water = ndwi !== null ? ndwi : -0.1;
     const veg = ndvi !== null ? ndvi : 0.25;
 
@@ -69,7 +69,7 @@ function SpatialInspectorCard({ inspector, onClose }) {
     if (total < 35) {
       return {
         title: "🔴 High Resource Risk",
-        desc: "Significant groundwater depletion and low moisture indices. Unfavorable for water-intensive farming. Highly viable for solar installations."
+        desc: "Significant groundwater storage depletion and low moisture indices. Unfavorable for water-intensive farming. Highly viable for solar installations."
       };
     } else if (total < 60) {
       return {
@@ -112,13 +112,24 @@ function SpatialInspectorCard({ inspector, onClose }) {
           <>
             <div className="inspector-index-list">
               <div className="inspector-index-item">
-                <span className="inspector-index-label">💧 Groundwater (GRACE)</span>
+                <span className="inspector-index-label">💧 Groundwater Storage Anomaly (GRACE)</span>
                 <span className="inspector-index-value" style={{
-                  color: data.groundwater === null ? '#94a3b8' : data.groundwater < -0.8 ? '#f87171' : data.groundwater < 0 ? '#fbbf24' : '#34d399'
+                  color: data.gwsa === null ? '#94a3b8' : data.gwsa < -0.8 ? '#f87171' : data.gwsa < 0 ? '#fbbf24' : '#34d399'
                 }}>
-                  {data.groundwater !== null ? `${data.groundwater.toFixed(3)} cm` : 'No Data'}
+                  {data.gwsa !== null ? `${data.gwsa.toFixed(3)} cm` : 'No Data'}
                 </span>
               </div>
+
+              {data.gwd !== undefined && (
+                <div className="inspector-index-item">
+                  <span className="inspector-index-label">🕳️ Groundwater Depth Change (GWD)</span>
+                  <span className="inspector-index-value" style={{
+                    color: data.gwd === null ? '#94a3b8' : data.gwd < -0.4 ? '#f87171' : data.gwd < 0 ? '#fbbf24' : '#34d399'
+                  }}>
+                    {data.gwd !== null ? `${data.gwd.toFixed(3)} m` : 'No Data'}
+                  </span>
+                </div>
+              )}
 
               <div className="inspector-index-item">
                 <span className="inspector-index-label">🌊 Surface Water (NDWI)</span>
@@ -261,7 +272,8 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
           ...prev,
           loading: false,
           data: {
-            groundwater: data.groundwater,
+            gwsa: data.gwsa,
+            gwd: data.gwd,
             ndwi: data.ndwi,
             ndvi: data.ndvi
           }
@@ -291,8 +303,9 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
     updateMapMarker(clickLat, clickLon);
 
     try {
-      const [gwData, ndwiData, ndviData] = await Promise.all([
-        getAllRegionsData('groundwater', selectedYearRef.current).catch(() => ({})),
+      const [gwData, gwdData, ndwiData, ndviData] = await Promise.all([
+        getAllRegionsData('gwsa', selectedYearRef.current).catch(() => ({})),
+        getAllRegionsData('gwd', selectedYearRef.current).catch(() => ({})),
         getAllRegionsData('ndwi', selectedYearRef.current).catch(() => ({})),
         getAllRegionsData('ndvi', selectedYearRef.current).catch(() => ({}))
       ]);
@@ -303,7 +316,8 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
           ...prev,
           loading: false,
           data: {
-            groundwater: gwData[regionName] !== undefined ? gwData[regionName] : null,
+            gwsa: gwData[regionName] !== undefined ? gwData[regionName] : null,
+            gwd: gwdData[regionName] !== undefined ? gwdData[regionName] : null,
             ndwi: ndwiData[regionName] !== undefined ? ndwiData[regionName] : null,
             ndvi: ndviData[regionName] !== undefined ? ndviData[regionName] : null
           }
@@ -462,8 +476,8 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
     let legendItems = [];
     let title = "";
 
-    if (activeFilter === 'Groundwater') {
-      title = "GWSA - Groundwater storage Anomaly";
+    if (activeFilter === 'GWSA') {
+      title = "GWSA - Groundwater Storage Anomaly";
       legendItems = [
         { label: "High Surplus (+3.0 to +4.0 cm)", color: "#4575b4" },
         { label: "Moderate Surplus (+2.0 to +3.0 cm)", color: "#91bfdb" },
@@ -471,6 +485,16 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
         { label: "Normal / Stable (0.0 to +1.0 cm)", color: "#fee090" },
         { label: "Moderate Deficit (-1.0 to 0.0 cm)", color: "#fc8d59" },
         { label: "Severe Deficit (-2.0 to -1.0 cm)", color: "#d73027" },
+      ];
+    } else if (activeFilter === 'GWD') {
+      title = "GWD - Groundwater Depth Change";
+      legendItems = [
+        { label: "High Rise (+1.3 to +2.0 m)", color: "#4575b4" },
+        { label: "Moderate Rise (+0.6 to +1.3 m)", color: "#91bfdb" },
+        { label: "Mild Rise (0.0 to +0.6 m)", color: "#e0f3f8" },
+        { label: "Mild Drop (-0.6 to 0.0 m)", color: "#fee090" },
+        { label: "Moderate Drop (-1.3 to -0.6 m)", color: "#fc8d59" },
+        { label: "Severe Drop (-2.0 to -1.3 m)", color: "#d73027" },
       ];
     } else if (activeFilter === 'Surface Water') {
       title = "NDWI - Surface Water";
@@ -482,7 +506,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
         { label: "Dry Soil (-0.2)", color: "#D2691E" },
         { label: "Very Dry Soil (-0.5)", color: "#8B4513" },
       ];
-    } else {
+    } else if (activeFilter === 'NDVI') {
       title = "NDVI - Land Use / Vegetation";
       legendItems = [
         { label: "Dense Forest (0.7+)", color: "#056201" },

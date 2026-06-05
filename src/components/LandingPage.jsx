@@ -124,7 +124,7 @@ export default function LandingPage({ onLaunch }) {
                 </div>
 
                 <div className="showcase-display-wrapper">
-                  {/* Slide 1: Groundwater Map Sim */}
+                  {/* Slide 1: Groundwater Storage Anomaly Map Sim */}
                   <div className={`showcase-display map-sim-display ${activeSlide === 1 ? 'active' : ''}`}>
                     <div className="mock-map-canvas dgr-map">
                       <div className="mock-map-terrain">
@@ -140,7 +140,7 @@ export default function LandingPage({ onLaunch }) {
                           <span className="popup-val risk">-2.1m/yr (Depleting)</span>
                         </div>
                         <div className="popup-row">
-                          <span>Groundwater storage:</span>
+                          <span>Groundwater Storage Anomaly:</span>
                           <span className="popup-val">Low Reserves</span>
                         </div>
                       </div>
@@ -238,7 +238,7 @@ export default function LandingPage({ onLaunch }) {
                       </div>
                       <div className="mock-chat-bubble advisor">
                         <p style={{ margin: '0 0 6px 0', color: '#7BD4E9' }}><strong>🤖 GeoAI Advisor:</strong></p>
-                        <p style={{ margin: 0 }}>Marrakech-Safi shows <strong>Moderate Viability</strong> for 2024. NDVI data indicates healthy vegetation density (0.68) in arable valleys, but historical Groundwater Storage (DGR) trends suggest groundwater table drop. Drip-irrigation is highly recommended.</p>
+                        <p style={{ margin: 0 }}>Marrakech-Safi shows <strong>Moderate Viability</strong> for 2024. NDVI data indicates healthy vegetation density (0.68) in arable valleys, but historical Groundwater Storage Anomaly (GWSA) trends suggest groundwater table drop. Drip-irrigation is highly recommended.</p>
                       </div>
                     </div>
                   </div>
@@ -250,7 +250,7 @@ export default function LandingPage({ onLaunch }) {
             <div className="showcase-content">
               <div className="showcase-slide" data-slide-id="1">
                 <span className="slide-number">01 / AQUIFER RESERVES</span>
-                <h3>Deep Groundwater Storage (DGR)</h3>
+                <h3>Groundwater Storage Anomaly (GWSA)</h3>
                 <p>
                   Assess subterranean water supplies before breaking ground. Track years of GEE depth-related indices to uncover region-wide aquifer depletion and select regions with long-term climate-resilient water security.
                 </p>
@@ -296,7 +296,7 @@ export default function LandingPage({ onLaunch }) {
               </p>
               <ul className="detail-bullet-list">
                 <li>
-                  <strong>Groundwater Reserves (DGR)</strong>: Tracks regional water table anomalies to locate secure aquifers.
+                  <strong>Groundwater Storage Anomaly (GWSA)</strong>: Tracks regional water table anomalies to locate secure aquifers.
                 </li>
                 <li>
                   <strong>Normalized Difference Water Index (NDWI)</strong>: Measures soil moisture and open reservoir water levels to protect investments against dry periods.

@@ -121,8 +121,8 @@ export async function getPointData(lat, lon, year) {
 // Background preloader routine to cache all platform GEE data (years 2017 to 2024)
 export function preloadAllPlatformData(onProgress) {
     const years = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
-    const tileIndices = ['Groundwater', 'Surface Water', 'Land Use'];
-    const regionIndices = ['groundwater', 'ndwi', 'ndvi'];
+    const tileIndices = ['GWSA', 'GWD', 'Surface Water', 'Land Use'];
+    const regionIndices = ['gwsa', 'gwd', 'ndwi', 'ndvi'];
     
     let completedTasks = 0;
     const totalTasks = years.length * (tileIndices.length + regionIndices.length);
