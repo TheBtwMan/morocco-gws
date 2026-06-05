@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import MoroccoMap from './components/Map/MoroccoMap.jsx';
-import { postChatQuery } from './services/apii.js';
+import { postChatQuery, preloadAllPlatformData } from './services/apii.js';
 import LandingPage from './components/LandingPage.jsx';
 import './App.css';
 
@@ -269,6 +269,13 @@ function App() {
       document.body.classList.remove('platform-active');
     };
   }, [view]);
+
+  // Pre-download all platform GEE index layers and average metrics in the background
+  useEffect(() => {
+    preloadAllPlatformData((progress) => {
+      console.log(`📦 Morocco GEE preloader: ${progress}% cached`);
+    });
+  }, []);
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
