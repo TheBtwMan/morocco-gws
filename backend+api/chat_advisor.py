@@ -66,16 +66,31 @@ def get_expert_report(region: str, year: int, gw_val: float, ndwi_val: float, nd
     # Weighted investment viability score
     viability_score = int(0.35 * gw_score + 0.3 * ndwi_score + 0.35 * ndvi_score)
     
-    # Determine Rating Category
+    # Determine Rating Category and Recommendations
     if viability_score < 35:
         rating = "🔴 SEVERE WATER STRESS / EXTREME INVESTMENT RISK"
         summary = "Traditional agricultural investments are highly discouraged due to critical aquifer depletion and low soil moisture. Focus strictly on solar energy, closed-loop agrotech, or coastal saline projects."
+        exclude_portfolio = "High-volume sprinkler irrigation, open-field commercial crops, livestock grazing, and water-heavy vegetables."
+        viable_ventures = """*   ☀️ **Solar & Wind Infrastructure**: Capitalize on extreme solar irradiance and wind corridors (especially in southern coastal zones).
+*   🧪 **Closed-Loop Controlled Agriculture**: Indoor vertical farming, hydroponics, or aeroponics with full water recycling.
+*   🌊 **Desalinated/Saline Agrotech**: Cultivation of halophytic crop varieties (e.g., Quinoa, Salicornia) using brackish water or coastal desalination resources.
+*   🔋 **Green Hydrogen & Clean Energy**: Set up production facilities powered by nearby desert solar/wind plants."""
     elif viability_score < 60:
         rating = "🟡 MODERATE RISK / ADAPTIVE STRATEGY REQUIRED"
         summary = "Moderate vegetation and water resources. Rain-fed and water-heavy farming are risky. Viable for drought-resistant crops (olive, argan, carob) using automated drip irrigation, solar farming, and soil sensors."
+        exclude_portfolio = "Unregulated groundwater extraction, flood irrigation, and high-water fruits/vegetables like watermelons, avocados, or citrus monocultures."
+        viable_ventures = """*   🌿 **Drought-Resistant Cultivars**: Majhool date palms, olive groves, argan trees, carob, and aromatic/medicinal herbs (Rosemary, Thyme).
+*   💧 **Smart Irrigation Tech**: Localized sub-surface drip irrigation, IoT soil moisture sensors, and automated evaporation management.
+*   🏭 **Agro-Processing & Value-Adding**: Processing plants for premium oil extraction (olive/argan) and dried fruit packaging, creating high export value with low water footprints.
+*   🌧️ **Water Harvesting & Storage**: Micro-catchments, mist harvesting, and small-scale farm reservoirs."""
     else:
         rating = "🟢 STRONG RESOURCE BASE / HIGHEST VIABILITY"
         summary = "Healthy soil moisture and stable water indicators. Favorable for high-value organic agriculture, sustainable forestry, agro-tourism, and food processing infrastructures. Drip tech is still recommended for climate resilience."
+        exclude_portfolio = "Sprinkler irrigation (use drip instead) and soil-depleting monoculture without crop rotation."
+        viable_ventures = """*   🚜 **High-Value Organic Agriculture**: Export-grade organic berries, specialty vegetables, medicinal crops, and seeds.
+*   🌲 **Sustainable Agro-Forestry**: Integrating high-value timber, fruit trees, and understory crops to maximize land utilization and moisture retention.
+*   🍇 **Viticulture & High-Grade Fruit Orchards**: Premium grape varieties, stone fruits, and managed citrus utilizing smart drip irrigation.
+*   🏭 **Eco-Tourism & Logistics Hubs**: Educational rural farm retreats, high-efficiency cold-chain packaging, and distribution hubs."""
 
     # Format values for presentation
     gw_str = f"{gw_val:.3f} cm" if isinstance(gw_val, (int, float)) else "N/A"
@@ -108,12 +123,9 @@ Based on **Google Earth Engine (GEE)** live satellite indicators, here is the ag
 
 #### 💼 Strategic Investment Recommendations
 
-*   🚫 **EXCLUDE FROM PORTFOLIO**: High-volume sprinkler irrigation, citrus monocultures, water-heavy vegetables (watermelon, zucchini), or large-scale cattle grazing.
+*   🚫 **EXCLUDE FROM PORTFOLIO**: {exclude_portfolio}
 *   ✅ **HIGHLY VIABLE VENTURES**:
-    *   ☀️ **Solar Photovoltaics (PV)**: The high aridity and low cloud indices offer world-class solar capacity.
-    *   🌿 **Hardy Local Cultivars**: Drought-tolerant high-value crops like **Argan trees**, **Olive groves**, **Date palms (Majhool)**, or medicinal herbs (Rosemary, Thyme).
-    *   💧 **Smart Ag-Tech**: Internet-of-Things (IoT) soil moisture probes, underground localized drip systems, and greywater recycling.
-    *   🏭 **Value-Added Processing**: Packaging, drying, and extracting local premium oils (olive/argan) which consume minimal water but yield high export margins.
+{viable_ventures}
 """
     return report
 
