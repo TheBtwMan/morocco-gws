@@ -5,11 +5,14 @@
 }
 
 body {
-
   color: #FFFFFF;
+  background-color: #0f0f15;
+  font-family: sans-serif;
+}
+
+body.platform-active {
   height: 100vh;
   overflow: hidden;
-  font-family: sans-serif;
 }
 
 .platform {
@@ -31,10 +34,11 @@ body {
   border-bottom: 1px solid #111111;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 0 24px;
   color: #7BD4E9;
-  letter-spacing: 2px;
-  font-size: 40px;
+  letter-spacing: 2.5px;
+  font-size: 28px;
   font-weight: bold;
 }
 
@@ -685,5 +689,30 @@ body {
 /* Leaflet GeoJSON Regions Hover Effect */
 .region-geojson-layer {
   transition: all 0.2s ease-in-out;
+}
+
+/* Back to Landing Page Hub Button */
+.back-hub-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(123, 212, 233, 0.3);
+  color: #7BD4E9;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.back-hub-btn:hover {
+  background: #7BD4E9;
+  color: #1a1a22;
+  box-shadow: 0 0 10px rgba(123, 212, 233, 0.3);
+  transform: translateY(-1px);
 }
 

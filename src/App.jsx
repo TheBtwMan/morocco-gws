@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import MoroccoMap from './components/Map/MoroccoMap.jsx';
 import { postChatQuery } from './services/apii.js';
+import LandingPage from './components/LandingPage.jsx';
 import './App.css';
 
-function GeoAIChat({ currentYear, currentIndex }) {
+function GeoAIChat({ currentYear, currentIndex, initialQuery, clearInitialQuery }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -31,6 +32,18 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
+
+  // Handle queries passed from the landing page
+  useEffect(() => {
+    if (initialQuery) {
+      const timer = setTimeout(() => {
+        handleSend(initialQuery);
+        clearInitialQuery();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const presetPrompts = [
     { label: "🌾 Invest in Souss-Massa?", text: "Can I invest in Souss-Massa agricultural projects?" },
@@ -224,6 +237,9 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
 }
 
 function App() {
+  const [view, setView] = useState('landing');
+  const [initialQuery, setInitialQuery] = useState(null);
+
   const [activeFilter, setActiveFilter] = useState('Groundwater');
   const [selectedYear, setSelectedYear] = useState(2017);
   const [debouncedYear, setDebouncedYear] = useState(2017);
@@ -242,18 +258,50 @@ function App() {
     };
   }, [selectedYear]);
 
+  // Dynamically manage body overflow class depending on view routing
+  useEffect(() => {
+    if (view === 'platform') {
+      document.body.classList.add('platform-active');
+    } else {
+      document.body.classList.remove('platform-active');
+    }
+    return () => {
+      document.body.classList.remove('platform-active');
+    };
+  }, [view]);
+
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
   };
 
+  const handleLaunchPlatform = (query) => {
+    if (query) {
+      setInitialQuery(query);
+    }
+    setView('platform');
+  };
+
+  if (view === 'landing') {
+    return <LandingPage onLaunch={handleLaunchPlatform} />;
+  }
+
   return (
     <div className="platform">
       <header className="topbar">
+        <button className="back-hub-btn" onClick={() => setView('landing')}>
+          ← Marketing Page
+        </button>
         <span>PLATEFORME GeoAI</span>
+        <div style={{ width: '100px' }}></div>
       </header>
       <main className="layout">
         <aside className="sidebar">
-          <GeoAIChat currentYear={debouncedYear} currentIndex={activeFilter} />
+          <GeoAIChat 
+            currentYear={debouncedYear} 
+            currentIndex={activeFilter} 
+            initialQuery={initialQuery}
+            clearInitialQuery={() => setInitialQuery(null)}
+          />
         </aside>
         <section className="map-area">
           <div className="toolbar">
