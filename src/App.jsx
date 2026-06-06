@@ -242,6 +242,30 @@ function App() {
 
   const [activeFilter, setActiveFilter] = useState('GWSA');
   const [gwDropdownOpen, setGwDropdownOpen] = useState(false);
+  const dropdownTimeoutRef = useRef(null);
+
+  const handleMouseEnterDropdown = () => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+      dropdownTimeoutRef.current = null;
+    }
+    setGwDropdownOpen(true);
+  };
+
+  const handleMouseLeaveDropdown = () => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setGwDropdownOpen(false);
+    }, 250); // 250ms delay to make it feel extremely smooth and prevent accidental closing
+  };
+
+  useEffect(() => {
+    return () => {
+      if (dropdownTimeoutRef.current) {
+        clearTimeout(dropdownTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const [selectedYear, setSelectedYear] = useState(2017);
   const [debouncedYear, setDebouncedYear] = useState(2017);
   const [adminLevel, setAdminLevel] = useState('admin0-all');
@@ -315,7 +339,8 @@ function App() {
           <div className="toolbar">
             <div 
               className="dropdown-container"
-              onMouseLeave={() => setGwDropdownOpen(false)}
+              onMouseEnter={handleMouseEnterDropdown}
+              onMouseLeave={handleMouseLeaveDropdown}
             >
               <button
                 type="button"
