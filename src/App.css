@@ -852,8 +852,8 @@ body.platform-active {
 }
 
 .synced-location-metrics {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
   margin-top: 4px;
 }
@@ -861,21 +861,24 @@ body.platform-active {
 .metric-badge {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 3px 6px;
+  padding: 4px 8px;
   border-radius: 4px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 9.5px;
+  gap: 6px;
+  font-size: 10px;
   font-weight: 500;
   color: #e2e8f0;
-  flex: 1 1 calc(50% - 4px);
+}
+
+.metric-badge:nth-child(7) {
+  grid-column: span 2;
   justify-content: center;
 }
 
 .badge-dot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }

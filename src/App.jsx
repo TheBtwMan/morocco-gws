@@ -236,12 +236,24 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
                 <span>GWD: {selectedLocation.data.gwd !== null ? `${selectedLocation.data.gwd.toFixed(2)} m` : 'N/A'}</span>
               </div>
               <div className="metric-badge">
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.recharge === null ? '#94a3b8' : selectedLocation.data.recharge < 2.0 ? '#f87171' : selectedLocation.data.recharge < 10.0 ? '#fbbf24' : '#34d399' }} />
+                <span>GWR: {selectedLocation.data.recharge !== null ? `${selectedLocation.data.recharge.toFixed(2)} cm` : 'N/A'}</span>
+              </div>
+              <div className="metric-badge">
                 <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.ndwi === null ? '#94a3b8' : selectedLocation.data.ndwi < -0.2 ? '#f87171' : selectedLocation.data.ndwi < 0.15 ? '#fbbf24' : '#34d399' }} />
                 <span>NDWI: {selectedLocation.data.ndwi !== null ? selectedLocation.data.ndwi.toFixed(2) : 'N/A'}</span>
               </div>
               <div className="metric-badge">
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.water_quantity === null ? '#94a3b8' : selectedLocation.data.water_quantity < 0.15 ? '#f87171' : selectedLocation.data.water_quantity < 0.4 ? '#fbbf24' : '#34d399' }} />
+                <span>SWQ: {selectedLocation.data.water_quantity !== null ? selectedLocation.data.water_quantity.toFixed(2) : 'N/A'}</span>
+              </div>
+              <div className="metric-badge">
                 <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.ndvi === null ? '#94a3b8' : selectedLocation.data.ndvi < 0.15 ? '#f87171' : selectedLocation.data.ndvi < 0.4 ? '#fbbf24' : '#34d399' }} />
                 <span>NDVI: {selectedLocation.data.ndvi !== null ? selectedLocation.data.ndvi.toFixed(2) : 'N/A'}</span>
+              </div>
+              <div className="metric-badge">
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.suitability === null ? '#94a3b8' : selectedLocation.data.suitability < 0.35 ? '#f87171' : selectedLocation.data.suitability < 0.6 ? '#fbbf24' : '#34d399' }} />
+                <span>LSI: {selectedLocation.data.suitability !== null ? selectedLocation.data.suitability.toFixed(2) : 'N/A'}</span>
               </div>
             </div>
           )}
@@ -293,27 +305,42 @@ function App() {
 
   const [activeFilter, setActiveFilter] = useState('GWSA');
   const [gwDropdownOpen, setGwDropdownOpen] = useState(false);
-  const dropdownTimeoutRef = useRef(null);
+  const [swDropdownOpen, setSwDropdownOpen] = useState(false);
+  const [landDropdownOpen, setLandDropdownOpen] = useState(false);
 
-  const handleMouseEnterDropdown = () => {
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-      dropdownTimeoutRef.current = null;
-    }
+  const gwTimeoutRef = useRef(null);
+  const swTimeoutRef = useRef(null);
+  const landTimeoutRef = useRef(null);
+
+  const handleMouseEnterGw = () => {
+    if (gwTimeoutRef.current) clearTimeout(gwTimeoutRef.current);
     setGwDropdownOpen(true);
   };
+  const handleMouseLeaveGw = () => {
+    gwTimeoutRef.current = setTimeout(() => setGwDropdownOpen(false), 250);
+  };
 
-  const handleMouseLeaveDropdown = () => {
-    dropdownTimeoutRef.current = setTimeout(() => {
-      setGwDropdownOpen(false);
-    }, 250); // 250ms delay to make it feel extremely smooth and prevent accidental closing
+  const handleMouseEnterSw = () => {
+    if (swTimeoutRef.current) clearTimeout(swTimeoutRef.current);
+    setSwDropdownOpen(true);
+  };
+  const handleMouseLeaveSw = () => {
+    swTimeoutRef.current = setTimeout(() => setSwDropdownOpen(false), 250);
+  };
+
+  const handleMouseEnterLand = () => {
+    if (landTimeoutRef.current) clearTimeout(landTimeoutRef.current);
+    setLandDropdownOpen(true);
+  };
+  const handleMouseLeaveLand = () => {
+    landTimeoutRef.current = setTimeout(() => setLandDropdownOpen(false), 250);
   };
 
   useEffect(() => {
     return () => {
-      if (dropdownTimeoutRef.current) {
-        clearTimeout(dropdownTimeoutRef.current);
-      }
+      if (gwTimeoutRef.current) clearTimeout(gwTimeoutRef.current);
+      if (swTimeoutRef.current) clearTimeout(swTimeoutRef.current);
+      if (landTimeoutRef.current) clearTimeout(landTimeoutRef.current);
     };
   }, []);
 
@@ -374,7 +401,7 @@ function App() {
         <button className="back-hub-btn" onClick={() => setView('landing')}>
           ← Marketing Page
         </button>
-        <span>PLATEFORME GeoAI</span>
+        <span>ARDI INVEST</span>
         <div style={{ width: '100px' }}></div>
       </header>
       <main className="layout">
@@ -389,17 +416,18 @@ function App() {
         </aside>
         <section className="map-area">
           <div className="toolbar">
+            {/* Groundwater Dropdown */}
             <div 
               className="dropdown-container"
-              onMouseEnter={handleMouseEnterDropdown}
-              onMouseLeave={handleMouseLeaveDropdown}
+              onMouseEnter={handleMouseEnterGw}
+              onMouseLeave={handleMouseLeaveGw}
             >
               <button
                 type="button"
-                className={`dropdown-trigger ${activeFilter === 'GWSA' || activeFilter === 'GWD' ? 'active' : ''}`}
+                className={`dropdown-trigger ${activeFilter === 'GWSA' || activeFilter === 'GWD' || activeFilter === 'Recharge' ? 'active' : ''}`}
                 onClick={() => setGwDropdownOpen(!gwDropdownOpen)}
               >
-                Groundwater {activeFilter === 'GWSA' ? 'storage anomaly' : activeFilter === 'GWD' ? 'depth' : ''} ▾
+                Groundwater {activeFilter === 'GWSA' ? '(anomaly)' : activeFilter === 'GWD' ? '(depth)' : activeFilter === 'Recharge' ? '(recharge)' : ''} ▾
               </button>
               {gwDropdownOpen && (
                 <div className="dropdown-menu">
@@ -411,7 +439,7 @@ function App() {
                       setGwDropdownOpen(false);
                     }}
                   >
-                    Groundwater storage anomaly 
+                    Groundwater storage anomaly
                   </button>
                   <button
                     type="button"
@@ -421,22 +449,99 @@ function App() {
                       setGwDropdownOpen(false);
                     }}
                   >
-                    Groundwater depth 
+                    Groundwater depth
+                  </button>
+                  <button
+                    type="button"
+                    className={`dropdown-item ${activeFilter === 'Recharge' ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleFilterChange('Recharge');
+                      setGwDropdownOpen(false);
+                    }}
+                  >
+                    Groundwater recharge
                   </button>
                 </div>
               )}
             </div>
-            <button
-              onClick={() => handleFilterChange('Surface Water')}
-              className={activeFilter === 'Surface Water' ? 'active' : ''}>
-              Surface Water
-            </button>
-            <button
-              onClick={() => handleFilterChange('Land Use')}
-              className={activeFilter === 'Land Use' ? 'active' : ''}>
-              Land Use
-            </button>
 
+            {/* Surface Water Dropdown */}
+            <div 
+              className="dropdown-container"
+              onMouseEnter={handleMouseEnterSw}
+              onMouseLeave={handleMouseLeaveSw}
+            >
+              <button
+                type="button"
+                className={`dropdown-trigger ${activeFilter === 'Surface Water' || activeFilter === 'Water Quantity' ? 'active' : ''}`}
+                onClick={() => setSwDropdownOpen(!swDropdownOpen)}
+              >
+                Surface Water {activeFilter === 'Surface Water' ? '(NDWI)' : activeFilter === 'Water Quantity' ? '(quantity)' : ''} ▾
+              </button>
+              {swDropdownOpen && (
+                <div className="dropdown-menu">
+                  <button
+                    type="button"
+                    className={`dropdown-item ${activeFilter === 'Surface Water' ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleFilterChange('Surface Water');
+                      setSwDropdownOpen(false);
+                    }}
+                  >
+                    Surface water (NDWI)
+                  </button>
+                  <button
+                    type="button"
+                    className={`dropdown-item ${activeFilter === 'Water Quantity' ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleFilterChange('Water Quantity');
+                      setSwDropdownOpen(false);
+                    }}
+                  >
+                    Surface water quantity
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Land Info Dropdown */}
+            <div 
+              className="dropdown-container"
+              onMouseEnter={handleMouseEnterLand}
+              onMouseLeave={handleMouseLeaveLand}
+            >
+              <button
+                type="button"
+                className={`dropdown-trigger ${activeFilter === 'Land Use' || activeFilter === 'Suitability' ? 'active' : ''}`}
+                onClick={() => setLandDropdownOpen(!landDropdownOpen)}
+              >
+                Land info {activeFilter === 'Land Use' ? '(vegetation)' : activeFilter === 'Suitability' ? '(suitability)' : ''} ▾
+              </button>
+              {landDropdownOpen && (
+                <div className="dropdown-menu">
+                  <button
+                    type="button"
+                    className={`dropdown-item ${activeFilter === 'Land Use' ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleFilterChange('Land Use');
+                      setLandDropdownOpen(false);
+                    }}
+                  >
+                    Land use (NDVI)
+                  </button>
+                  <button
+                    type="button"
+                    className={`dropdown-item ${activeFilter === 'Suitability' ? 'selected' : ''}`}
+                    onClick={() => {
+                      handleFilterChange('Suitability');
+                      setLandDropdownOpen(false);
+                    }}
+                  >
+                    Land suitability
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="map-canvas">
             <MoroccoMap 

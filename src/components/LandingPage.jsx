@@ -45,7 +45,7 @@ export default function LandingPage({ onLaunch }) {
       <header className="landing-nav">
         <div className="landing-logo" onClick={() => scrollToSection('top')}>
           <div className="landing-logo-icon"></div>
-          GeoAI Morocco
+          Ardi Invest
         </div>
         <button className="landing-nav-btn" onClick={() => onLaunch()}>
           Launch Platform
@@ -228,17 +228,17 @@ export default function LandingPage({ onLaunch }) {
                       </div>
                       <div className="mock-chat-badges">
                         <span className="chat-badge">📅 2024</span>
-                        <span className="chat-badge">📊 Land Use (NDVI)</span>
-                        <span className="chat-badge">📍 Marrakech-Safi</span>
+                        <span className="chat-badge">🚜 Land Suitability (LSI)</span>
+                        <span className="chat-badge">📍 Souss-Massa</span>
                       </div>
                     </div>
                     <div className="mock-chat-messages">
                       <div className="mock-chat-bubble user">
-                        Is Marrakech-Safi safe for olive orchard investment in 2024?
+                        Analyze Souss-Massa agricultural suitability and water risk in 2024.
                       </div>
                       <div className="mock-chat-bubble advisor">
-                        <p style={{ margin: '0 0 6px 0', color: '#7BD4E9' }}><strong>🤖 GeoAI Advisor:</strong></p>
-                        <p style={{ margin: 0 }}>Marrakech-Safi shows <strong>Moderate Viability</strong> for 2024. NDVI data indicates healthy vegetation density (0.68) in arable valleys, but historical Groundwater Storage Anomaly (GWSA) trends suggest groundwater table drop. Drip-irrigation is highly recommended.</p>
+                        <p style={{ margin: '0 0 6px 0', color: '#7BD4E9' }}><strong>🤖 Ardi Invest Advisor:</strong></p>
+                        <p style={{ margin: 0 }}>Souss-Massa shows <strong>Moderate Viability (46/100)</strong>. Groundwater Recharge (GWR) is extremely low (0.19 cm/yr) and Surface Water is scarce. We recommend heat-tolerant <strong>Majhool Date Palms</strong> or <strong>Argan Trees</strong>, and strictly warn against planting high-water crops like watermelons.</p>
                       </div>
                     </div>
                   </div>
@@ -250,33 +250,33 @@ export default function LandingPage({ onLaunch }) {
             <div className="showcase-content">
               <div className="showcase-slide" data-slide-id="1">
                 <span className="slide-number">01 / AQUIFER RESERVES</span>
-                <h3>Groundwater Storage Anomaly (GWSA)</h3>
+                <h3>Groundwater Storage & Recharge (GWSA & GWR)</h3>
                 <p>
-                  Assess subterranean water supplies before breaking ground. Track years of GEE depth-related indices to uncover region-wide aquifer depletion and select regions with long-term climate-resilient water security.
+                  Assess subterranean supply and replenishment trends. Track gravity anomalies via GRACE (GWSA) alongside active recharge infiltration rates (GWR) derived from GLDAS land metadata, ensuring long-term climate-resilient water access.
                 </p>
               </div>
 
               <div className="showcase-slide" data-slide-id="2">
-                <span className="slide-number">02 / RESERVOIR HEALTH</span>
-                <h3>Normalized Difference Water Index (NDWI)</h3>
+                <span className="slide-number">02 / RESERVOIR & BASIN HEALTH</span>
+                <h3>Surface Moisture & Water Quantity (NDWI & SWQ)</h3>
                 <p>
-                  Evaluate surface water resources, humidity indices, and river proximity. The platform computes NDWI indicators to safeguard your crops against immediate drought risks and ensure proximity to vital irrigation lines.
+                  Evaluate irrigation buffers and reservoir health. The platform combines Sentinel-2 NDWI surface moisture with scaled Surface Water Quantity (SWQ) indices to map open canal, lake, and reservoir abundance.
                 </p>
               </div>
 
               <div className="showcase-slide" data-slide-id="3">
-                <span className="slide-number">03 / ARABLE SOIL LAND USE</span>
-                <h3>Vegetation Indexes & Crop Health (NDVI)</h3>
+                <span className="slide-number">03 / ARABLE SOIL & LAND SUITABILITY</span>
+                <h3>Vegetation Canopy & Land Suitability Index (NDVI & LSI)</h3>
                 <p>
-                  Identify fertile lands and crop cycles dynamically. Visualize Land Use indexes and NDVI crop density values mapped down to local commune levels to see where agricultural production thrives.
+                  Locate fertile zones instantly. Track crop vegetation vigor via Sentinel-2 NDVI canopy density, and compute multi-spectral Land Suitability Index (LSI) scores combining soil wetness and leaf greenness.
                 </p>
               </div>
 
               <div className="showcase-slide" data-slide-id="4">
-                <span className="slide-number">04 / INTUITIVE ADVICE</span>
-                <h3>Intelligent GeoAI Chat Advisor</h3>
+                <span className="slide-number">04 / CONTEXT-AWARE ADVISOR</span>
+                <h3>Synched Chat Advisor & Decisions Engine</h3>
                 <p>
-                  Translate scientific map metrics into plain language. Our conversational assistant interprets active spatial context (year, index, map boundary) in real-time, instantly formulating risks and opportunities for your capital.
+                  Get direct agricultural recommendations in plain language. The conversational assistant reads your map's active location and GEE indices to generate tailored soil treatment, crop advice, and investment guidelines.
                 </p>
               </div>
             </div>
@@ -296,13 +296,13 @@ export default function LandingPage({ onLaunch }) {
               </p>
               <ul className="detail-bullet-list">
                 <li>
-                  <strong>Groundwater Storage Anomaly (GWSA)</strong>: Tracks regional water table anomalies to locate secure aquifers.
+                  <strong>Groundwater Storage (GWSA) & Recharge (GWR)</strong>: Tracks deep regional aquifer changes, water table drops, and annual replenishment rates.
                 </li>
                 <li>
-                  <strong>Normalized Difference Water Index (NDWI)</strong>: Measures soil moisture and open reservoir water levels to protect investments against dry periods.
+                  <strong>Surface Water (NDWI) & Quantity (SWQ)</strong>: Measures soil moisture levels and scales open water pixels to protect against immediate drought risk.
                 </li>
                 <li>
-                  <strong>Normalized Difference Vegetation Index (NDVI)</strong>: Measures chlorophyll absorption to monitor crop growth rates and farm expansion trends.
+                  <strong>Vegetation Canopy (NDVI) & Land Suitability Index (LSI)</strong>: Monitors crop health and computes multi-spectral agricultural suitability scores.
                 </li>
               </ul>
             </div>
@@ -360,7 +360,7 @@ export default function LandingPage({ onLaunch }) {
       <section className="landing-explain">
         <div className="explain-header">
           <h2>Platform Insights at a Glance</h2>
-          <p>Morocco GeoAI integrates state-of-the-art satellite data streams to deliver actionable agricultural intelligence.</p>
+          <p>Ardi Invest integrates state-of-the-art satellite data streams to deliver actionable agricultural intelligence.</p>
         </div>
 
         <div className="explain-grid">
@@ -380,6 +380,12 @@ export default function LandingPage({ onLaunch }) {
             <div className="explain-icon-wrapper">🤖</div>
             <h3>Synched Chat Context</h3>
             <p>The AI Chat advisor is context-aware. Toggle "Sync Map Context" so the assistant automatically knows which year, index, and region you are looking at.</p>
+          </div>
+
+          <div className="explain-card">
+            <div className="explain-icon-wrapper">🚜</div>
+            <h3>7-Layer Decision Matrix</h3>
+            <p>Query GWSA, GWD, Recharge, NDWI, SWQ, NDVI, and LSI in parallel. Instantly receive crop matching rules and climate-resilient farming advice.</p>
           </div>
         </div>
       </section>

@@ -55,23 +55,28 @@ function SpatialInspectorCard({ inspector, onClose }) {
   const getSuitabilityAnalysis = () => {
     if (!data) return { title: "N/A", desc: "No indices loaded." };
 
-    const { gwsa, ndwi, ndvi } = data;
+    let totalScore = 0;
+    if (data.suitability !== null && data.suitability !== undefined) {
+      // Scale GEE LSI [0, 0.8] to [0, 100]
+      totalScore = Math.min(Math.max((data.suitability / 0.8) * 100, 0), 100);
+    } else {
+      const { gwsa, ndwi, ndvi } = data;
+      const gw = gwsa !== null ? gwsa : -0.5;
+      const water = ndwi !== null ? ndwi : -0.1;
+      const veg = ndvi !== null ? ndvi : 0.25;
 
-    const gw = gwsa !== null ? gwsa : -0.5;
-    const water = ndwi !== null ? ndwi : -0.1;
-    const veg = ndvi !== null ? ndvi : 0.25;
+      const gw_score = Math.min(Math.max((gw + 1.5) / 3 * 100, 0), 100);
+      const water_score = Math.min(Math.max((water + 0.5) * 100, 0), 100);
+      const veg_score = Math.min(Math.max(veg / 0.8 * 100, 0), 100);
+      totalScore = Math.round(0.35 * gw_score + 0.3 * water_score + 0.35 * veg_score);
+    }
 
-    const gw_score = Math.min(Math.max((gw + 1.5) / 3 * 100, 0), 100);
-    const water_score = Math.min(Math.max((water + 0.5) * 100, 0), 100);
-    const veg_score = Math.min(Math.max(veg / 0.8 * 100, 0), 100);
-    const total = Math.round(0.35 * gw_score + 0.3 * water_score + 0.35 * veg_score);
-
-    if (total < 35) {
+    if (totalScore < 35) {
       return {
         title: "🔴 High Resource Risk",
         desc: "Significant groundwater storage depletion and low moisture indices. Unfavorable for water-intensive farming. Highly viable for solar installations."
       };
-    } else if (total < 60) {
+    } else if (totalScore < 60) {
       return {
         title: "🟡 Moderate Adaptive Outlook",
         desc: "Moderate vegetation and water cover. Good viability for drought-resistant trees (Olive, Argan) with automated drip irrigation."
@@ -131,6 +136,17 @@ function SpatialInspectorCard({ inspector, onClose }) {
                 </div>
               )}
 
+              {data.recharge !== undefined && (
+                <div className="inspector-index-item">
+                  <span className="inspector-index-label">🌧️ Groundwater Recharge (GWR)</span>
+                  <span className="inspector-index-value" style={{
+                    color: data.recharge === null ? '#94a3b8' : data.recharge < 2.0 ? '#f87171' : data.recharge < 10.0 ? '#fbbf24' : '#34d399'
+                  }}>
+                    {data.recharge !== null ? `${data.recharge.toFixed(3)} cm` : 'No Data'}
+                  </span>
+                </div>
+              )}
+
               <div className="inspector-index-item">
                 <span className="inspector-index-label">🌊 Surface Water (NDWI)</span>
                 <span className="inspector-index-value" style={{
@@ -140,6 +156,17 @@ function SpatialInspectorCard({ inspector, onClose }) {
                 </span>
               </div>
 
+              {data.water_quantity !== undefined && (
+                <div className="inspector-index-item">
+                  <span className="inspector-index-label">💧 Surface Water Quantity (SWQ)</span>
+                  <span className="inspector-index-value" style={{
+                    color: data.water_quantity === null ? '#94a3b8' : data.water_quantity < 0.15 ? '#f87171' : data.water_quantity < 0.4 ? '#fbbf24' : '#34d399'
+                  }}>
+                    {data.water_quantity !== null ? data.water_quantity.toFixed(3) : 'No Data'}
+                  </span>
+                </div>
+              )}
+
               <div className="inspector-index-item">
                 <span className="inspector-index-label">🌾 Land Use (NDVI)</span>
                 <span className="inspector-index-value" style={{
@@ -148,6 +175,17 @@ function SpatialInspectorCard({ inspector, onClose }) {
                   {data.ndvi !== null ? data.ndvi.toFixed(3) : 'No Data'}
                 </span>
               </div>
+
+              {data.suitability !== undefined && (
+                <div className="inspector-index-item">
+                  <span className="inspector-index-label">🚜 Land Suitability Index (LSI)</span>
+                  <span className="inspector-index-value" style={{
+                    color: data.suitability === null ? '#94a3b8' : data.suitability < 0.35 ? '#f87171' : data.suitability < 0.6 ? '#fbbf24' : '#34d399'
+                  }}>
+                    {data.suitability !== null ? data.suitability.toFixed(3) : 'No Data'}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="inspector-suitability">
@@ -161,14 +199,12 @@ function SpatialInspectorCard({ inspector, onClose }) {
   );
 }
 
-function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
+function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspect }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const regionsLayerRef = useRef(null);
   const satelliteLayerRef = useRef(null);
   const activeMarkerRef = useRef(null);
-
-  const [inspector, setInspector] = useState(null);
 
   const adminLevelRef = useRef(adminLevel);
   const selectedYearRef = useRef(selectedYear);
@@ -255,7 +291,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
   };
 
   const handlePointClick = async (lat, lon, label) => {
-    setInspector({
+    onInspect({
       title: label || `Coordinate Inspection`,
       lat: lat.toFixed(4),
       lon: lon.toFixed(4),
@@ -266,7 +302,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
 
     try {
       const data = await getPointData(lat, lon, selectedYearRef.current);
-      setInspector(prev => {
+      onInspect(prev => {
         if (!prev) return null;
         return {
           ...prev,
@@ -275,13 +311,16 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
             gwsa: data.gwsa,
             gwd: data.gwd,
             ndwi: data.ndwi,
-            ndvi: data.ndvi
+            ndvi: data.ndvi,
+            recharge: data.recharge,
+            water_quantity: data.water_quantity,
+            suitability: data.suitability
           }
         };
       });
     } catch (err) {
       console.error(err);
-      setInspector(prev => {
+      onInspect(prev => {
         if (!prev) return null;
         return {
           ...prev,
@@ -293,7 +332,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
   };
 
   const handleRegionClick = async (regionName, clickLat, clickLon) => {
-    setInspector({
+    onInspect({
       title: `🗺️ Region: ${regionName}`,
       lat: clickLat.toFixed(4),
       lon: clickLon.toFixed(4),
@@ -303,14 +342,17 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
     updateMapMarker(clickLat, clickLon);
 
     try {
-      const [gwData, gwdData, ndwiData, ndviData] = await Promise.all([
+      const [gwData, gwdData, ndwiData, ndviData, rechargeData, waterQtyData, suitabilityData] = await Promise.all([
         getAllRegionsData('gwsa', selectedYearRef.current).catch(() => ({})),
         getAllRegionsData('gwd', selectedYearRef.current).catch(() => ({})),
         getAllRegionsData('ndwi', selectedYearRef.current).catch(() => ({})),
-        getAllRegionsData('ndvi', selectedYearRef.current).catch(() => ({}))
+        getAllRegionsData('ndvi', selectedYearRef.current).catch(() => ({})),
+        getAllRegionsData('recharge', selectedYearRef.current).catch(() => ({})),
+        getAllRegionsData('water_quantity', selectedYearRef.current).catch(() => ({})),
+        getAllRegionsData('suitability', selectedYearRef.current).catch(() => ({}))
       ]);
 
-      setInspector(prev => {
+      onInspect(prev => {
         if (!prev) return null;
         return {
           ...prev,
@@ -319,13 +361,16 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
             gwsa: gwData[regionName] !== undefined ? gwData[regionName] : null,
             gwd: gwdData[regionName] !== undefined ? gwdData[regionName] : null,
             ndwi: ndwiData[regionName] !== undefined ? ndwiData[regionName] : null,
-            ndvi: ndviData[regionName] !== undefined ? ndviData[regionName] : null
+            ndvi: ndviData[regionName] !== undefined ? ndviData[regionName] : null,
+            recharge: rechargeData[regionName] !== undefined ? rechargeData[regionName] : null,
+            water_quantity: waterQtyData[regionName] !== undefined ? waterQtyData[regionName] : null,
+            suitability: suitabilityData[regionName] !== undefined ? suitabilityData[regionName] : null
           }
         };
       });
     } catch (err) {
       console.error(err);
-      setInspector(prev => {
+      onInspect(prev => {
         if (!prev) return null;
         return {
           ...prev,
@@ -337,7 +382,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
   };
 
   const handleCloseInspector = () => {
-    setInspector(null);
+    onInspect(null);
     const map = mapInstanceRef.current;
     if (map && activeMarkerRef.current) {
       map.removeLayer(activeMarkerRef.current);
@@ -453,7 +498,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
       bottom: '24px',
       right: '24px',
       zIndex: 1000,
-      background: 'transparent',
+      background: 'rgba(255, 255, 255, 0.95)',
       padding: '16px',
       borderRadius: '12px',
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
@@ -506,7 +551,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
         { label: "Dry Soil (-0.2)", color: "#D2691E" },
         { label: "Very Dry Soil (-0.5)", color: "#8B4513" },
       ];
-    } else if (activeFilter === 'NDVI') {
+    } else if (activeFilter === 'Land Use' || activeFilter === 'NDVI') {
       title = "NDVI - Land Use / Vegetation";
       legendItems = [
         { label: "Dense Forest (0.7+)", color: "#056201" },
@@ -515,6 +560,41 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel }) {
         { label: "Cropland / Agriculture (0.2)", color: "#99B718" },
         { label: "Bare Soil (0.1)", color: "#CE7E45" },
         { label: "No Vegetation (0.0)", color: "#FFFFFF" },
+      ];
+    } else if (activeFilter === 'Recharge') {
+      title = "GWR - Groundwater Recharge";
+      legendItems = [
+        { label: "High Recharge (>20 cm/yr)", color: "#084594" },
+        { label: "Moderate-High (15-20 cm/yr)", color: "#2171b5" },
+        { label: "Moderate (10-15 cm/yr)", color: "#4292c6" },
+        { label: "Low-Moderate (5-10 cm/yr)", color: "#6baed6" },
+        { label: "Very Low (2-5 cm/yr)", color: "#9ecae1" },
+        { label: "Deficit (0-2 cm/yr)", color: "#deebf7" },
+        { label: "Minimal / None (0 cm/yr)", color: "#f7fbff" },
+      ];
+    } else if (activeFilter === 'Water Quantity') {
+      title = "SWQ - Surface Water Quantity";
+      legendItems = [
+        { label: "Deep / Permanent (0.8 - 1.0)", color: "#08589e" },
+        { label: "Major Reservoirs (0.6 - 0.8)", color: "#2b8cbe" },
+        { label: "Moderate Water (0.4 - 0.6)", color: "#4eb3d3" },
+        { label: "Shallow / Wetlands (0.3 - 0.4)", color: "#7bccc4" },
+        { label: "Flooded / High Moisture (0.2 - 0.3)", color: "#a8ddb5" },
+        { label: "Saturated Soil (0.1 - 0.2)", color: "#ccebc5" },
+        { label: "Dry Land (0.0 - 0.1)", color: "#e0f3db" },
+        { label: "No Surface Water (0.0)", color: "#f7fcf0" },
+      ];
+    } else if (activeFilter === 'Suitability') {
+      title = "LSI - Land Suitability Index";
+      legendItems = [
+        { label: "Excellent Suitability (0.7 - 0.8)", color: "#056201" },
+        { label: "High Suitability (0.6 - 0.7)", color: "#2bbe74" },
+        { label: "Good Suitability (0.5 - 0.6)", color: "#4eb374" },
+        { label: "Moderate Suitability (0.4 - 0.5)", color: "#74cc74" },
+        { label: "Low-Moderate (0.3 - 0.4)", color: "#a5dd74" },
+        { label: "Low Suitability (0.2 - 0.3)", color: "#c5eb74" },
+        { label: "Very Low Suitability (0.1 - 0.2)", color: "#dbf374" },
+        { label: "Unsuitable (0.0 - 0.1)", color: "#f7fc74" },
       ];
     }
 

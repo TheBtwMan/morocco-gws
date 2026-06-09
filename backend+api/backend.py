@@ -3,6 +3,7 @@ import ee
 import geemap
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 # Simple in-memory cache for get_all_regions_data results
 _regions_cache = {}
@@ -167,6 +168,54 @@ def get_gwd_image(year: int) -> ee.Image:
 def get_boundary() -> ee.Geometry:
     # Merges all 12 custom local regions into a single unified country geometry for seamless satellite clipping
     return get_morocco_regions().union().geometry()
+
+
+def get_recharge_image(year: int) -> ee.Image:
+    """Computes Groundwater Recharge proxy in cm using GLDAS Water Balance:
+    Recharge = Max(Precipitation - Evapotranspiration, 0) * 0.20
+    Precipitation is 'Rainf_tavg' (kg/m2/s) accumulated over year (multiply by 3153600).
+    Evapotranspiration is 'Evap_tavg' (kg/m2/s) accumulated over year (multiply by 3153600).
+    """
+    gldas = ee.ImageCollection(GLDAS_DATASET).select(["Rainf_tavg", "Evap_tavg"]).filterDate(f"{year}-01-01", f"{year + 1}-01-01").mean()
+    precip = gldas.select("Rainf_tavg").multiply(3153600) # Convert kg/m2/s to cm/year
+    evap = gldas.select("Evap_tavg").multiply(3153600)
+    recharge = precip.subtract(evap).multiply(0.20).clamp(0, 100).rename("recharge")
+    return recharge
+
+
+def get_water_quantity_image(year: int) -> ee.Image:
+    """Estimates surface water presence/quantity from Sentinel-2 NDWI:
+    Quantity = Clamped NDWI [0, 0.5] scaled to [0, 1].
+    """
+    morocco_border = get_boundary()
+    ndwi = (
+        ee.ImageCollection(SENTINEL2_DATASET)
+        .filterBounds(morocco_border)
+        .filterDate(f"{year}-01-01", f"{year}-12-31")
+        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+        .median()
+        .normalizedDifference(["B3", "B8"])
+    )
+    quantity = ndwi.clamp(0, 0.5).divide(0.5).rename("water_quantity")
+    return quantity
+
+
+def get_suitability_image(year: int) -> ee.Image:
+    """Computes Land Suitability Index (0 to 1) for agriculture:
+    Suitability = 0.6 * NDVI + 0.4 * (NDWI + 0.2)
+    """
+    morocco_border = get_boundary()
+    s2 = (
+        ee.ImageCollection(SENTINEL2_DATASET)
+        .filterBounds(morocco_border)
+        .filterDate(f"{year}-01-01", f"{year}-12-31")
+        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+        .median()
+    )
+    ndvi = s2.normalizedDifference(["B8", "B4"])
+    ndwi = s2.normalizedDifference(["B3", "B8"])
+    suitability = ndvi.multiply(0.6).add(ndwi.add(0.2).multiply(0.4)).clamp(0, 1).rename("suitability")
+    return suitability
 
 def admin2() -> str:
     # 1. Load the regions from our custom local FeatureCollection (already includes all 12 regions)
@@ -459,8 +508,20 @@ def get_all_regions_data(year: int, index: str) -> dict:
         )
         band_name = "ndvi"
         scale = 10000
+    elif index_lower in ["recharge", "groundwater recharge"]:
+        image = get_recharge_image(year)
+        band_name = "recharge"
+        scale = 55000
+    elif index_lower in ["water_quantity", "water quantity", "surface water quantity"]:
+        image = get_water_quantity_image(year)
+        band_name = "water_quantity"
+        scale = 10000
+    elif index_lower in ["suitability", "land suitability"]:
+        image = get_suitability_image(year)
+        band_name = "suitability"
+        scale = 10000
     else:
-        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'ndwi', or 'ndvi'.")
+        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'ndwi', 'ndvi', 'recharge', 'water_quantity', or 'suitability'.")
 
     try:
         reduced = image.reduceRegions(
@@ -608,8 +669,76 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
 
         results = ee.FeatureCollection(ee_years.map(compute_year_ndvi))
 
+    elif index_lower in ["recharge", "groundwater recharge"]:
+        def compute_year_recharge(y):
+            y = ee.Number(y)
+            start = ee.Date.fromYMD(y, 1, 1)
+            end = ee.Date.fromYMD(y, 12, 31)
+            gldas = ee.ImageCollection(GLDAS_DATASET).select(["Rainf_tavg", "Evap_tavg"]).filterDate(start, end).mean()
+            precip = gldas.select("Rainf_tavg").multiply(3153600)
+            evap = gldas.select("Evap_tavg").multiply(3153600)
+            recharge = precip.subtract(evap).multiply(0.20).clamp(0, 100).rename("recharge")
+            val = recharge.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=region_geom,
+                scale=55000,
+                maxPixels=1e9,
+                bestEffort=True,
+            ).get("recharge")
+            return ee.Feature(None, {"year": y, "value": val})
+        results = ee.FeatureCollection(ee_years.map(compute_year_recharge))
+
+    elif index_lower in ["water_quantity", "water quantity", "surface water quantity"]:
+        def compute_year_water_quantity(y):
+            y = ee.Number(y)
+            start = ee.Date.fromYMD(y, 1, 1)
+            end = ee.Date.fromYMD(y, 12, 31)
+            img = (
+                ee.ImageCollection(SENTINEL2_DATASET)
+                .filterBounds(region_geom)
+                .filterDate(start, end)
+                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+                .median()
+                .normalizedDifference(["B3", "B8"])
+            )
+            quantity = img.clamp(0, 0.5).divide(0.5).rename("water_quantity")
+            val = quantity.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=region_geom,
+                scale=10000,
+                maxPixels=1e9,
+                bestEffort=True,
+            ).get("water_quantity")
+            return ee.Feature(None, {"year": y, "value": val})
+        results = ee.FeatureCollection(ee_years.map(compute_year_water_quantity))
+
+    elif index_lower in ["suitability", "land suitability"]:
+        def compute_year_suitability(y):
+            y = ee.Number(y)
+            start = ee.Date.fromYMD(y, 1, 1)
+            end = ee.Date.fromYMD(y, 12, 31)
+            s2 = (
+                ee.ImageCollection(SENTINEL2_DATASET)
+                .filterBounds(region_geom)
+                .filterDate(start, end)
+                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+                .median()
+            )
+            ndvi = s2.normalizedDifference(["B8", "B4"])
+            ndwi = s2.normalizedDifference(["B3", "B8"])
+            suitability = ndvi.multiply(0.6).add(ndwi.add(0.2).multiply(0.4)).clamp(0, 1).rename("suitability")
+            val = suitability.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=region_geom,
+                scale=10000,
+                maxPixels=1e9,
+                bestEffort=True,
+            ).get("suitability")
+            return ee.Feature(None, {"year": y, "value": val})
+        results = ee.FeatureCollection(ee_years.map(compute_year_suitability))
+
     else:
-        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'ndwi', or 'ndvi'.")
+        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'ndwi', 'ndvi', 'recharge', 'water_quantity', or 'suitability'.")
 
     features = results.getInfo().get("features", [])
     return {
@@ -678,8 +807,29 @@ def get_tile_url(year: int, index: str) -> str:
             "max": 2,
             "palette": ["#d73027", "#fc8d59", "#fee090", "#e0f3f8", "#91bfdb", "#4575b4"],
         }
+    elif index_lower in ["recharge", "groundwater recharge"]:
+        image = get_recharge_image(year).clip(morocco_border)
+        vis_params = {
+            "min": 0,
+            "max": 25,
+            "palette": ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#084594"],
+        }
+    elif index_lower in ["water quantity", "water_quantity", "surface water quantity"]:
+        image = get_water_quantity_image(year).clip(morocco_border)
+        vis_params = {
+            "min": 0,
+            "max": 1,
+            "palette": ["#f7fcf0", "#e0f3db", "#ccebc5", "#a8ddb5", "#7bccc4", "#4eb3d3", "#2b8cbe", "#08589e"],
+        }
+    elif index_lower in ["suitability", "land suitability"]:
+        image = get_suitability_image(year).clip(morocco_border)
+        vis_params = {
+            "min": 0,
+            "max": 0.8,
+            "palette": ["#f7fc74", "#dbf374", "#c5eb74", "#a5dd74", "#74cc74", "#4eb374", "#2bbe74", "#056201"],
+        }
     else:
-        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'surface water' (ndwi), or 'land use' (ndvi).")
+        raise ValueError(f"Invalid index '{index}'. Use 'gwsa', 'gwd', 'surface water' (ndwi), 'land use' (ndvi), 'recharge', 'water quantity', or 'suitability'.")
         
     map_id = image.getMapId(vis_params)
     tile_url = map_id["tile_fetcher"].url_format
@@ -688,75 +838,130 @@ def get_tile_url(year: int, index: str) -> str:
 
 def get_point_data(lat: float, lon: float, year: int) -> dict:
     """
-    Queries Earth Engine at a single coordinate using appropriate buffers.
+    Queries Earth Engine at a single coordinate using appropriate buffers in parallel.
     - Groundwater (GRACE): 25km buffer due to low satellite resolution.
     - NDWI and NDVI (Sentinel-2): 100m buffer for high spatial precision.
     """
     point = ee.Geometry.Point([lon, lat])
     
-    # 1. Groundwater Storage Anomaly (GWSA = GRACE TWSA - GLDAS surface anomaly)
-    try:
-        gwsa = get_gwsa_image(year)
-        gw_val = gwsa.reduceRegion(
-            reducer=ee.Reducer.mean(),
-            geometry=point.buffer(25000),
-            scale=25000
-        ).get("gwsa").getInfo()
-    except Exception as e:
-        print(f"EE Point GW error: {e}")
-        gw_val = None
+    def fetch_gwsa():
+        try:
+            gwsa = get_gwsa_image(year)
+            return gwsa.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(25000),
+                scale=25000
+            ).get("gwsa").getInfo()
+        except Exception as e:
+            print(f"EE Point GW error: {e}")
+            return None
 
-    # 2. Groundwater Depth Change (GWD)
-    try:
-        gwd = get_gwd_image(year)
-        gwd_val = gwd.reduceRegion(
-            reducer=ee.Reducer.mean(),
-            geometry=point.buffer(25000),
-            scale=25000
-        ).get("gwd").getInfo()
-    except Exception as e:
-        print(f"EE Point GWD error: {e}")
-        gwd_val = None
+    def fetch_gwd():
+        try:
+            gwd = get_gwd_image(year)
+            return gwd.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(25000),
+                scale=25000
+            ).get("gwd").getInfo()
+        except Exception as e:
+            print(f"EE Point GWD error: {e}")
+            return None
 
-    # 3. NDWI
-    try:
-        ndwi_img = (
-            ee.ImageCollection(SENTINEL2_DATASET)
-            .filterBounds(point.buffer(100))
-            .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
-            .median()
-            .normalizedDifference(["B3", "B8"])
-        )
-        ndwi_val = ndwi_img.reduceRegion(
-            reducer=ee.Reducer.mean(),
-            geometry=point.buffer(100),
-            scale=10,
-            bestEffort=True
-        ).get("nd").getInfo()
-    except Exception as e:
-        print(f"EE Point NDWI error: {e}")
-        ndwi_val = None
+    def fetch_ndwi():
+        try:
+            ndwi_img = (
+                ee.ImageCollection(SENTINEL2_DATASET)
+                .filterBounds(point.buffer(100))
+                .filterDate(f"{year}-01-01", f"{year}-12-31")
+                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+                .median()
+                .normalizedDifference(["B3", "B8"])
+            )
+            return ndwi_img.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(100),
+                scale=10,
+                bestEffort=True
+            ).get("nd").getInfo()
+        except Exception as e:
+            print(f"EE Point NDWI error: {e}")
+            return None
 
-    # 4. NDVI
-    try:
-        ndvi_img = (
-            ee.ImageCollection(SENTINEL2_DATASET)
-            .filterBounds(point.buffer(100))
-            .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
-            .median()
-            .normalizedDifference(["B8", "B4"])
-        )
-        ndvi_val = ndvi_img.reduceRegion(
-            reducer=ee.Reducer.mean(),
-            geometry=point.buffer(100),
-            scale=10,
-            bestEffort=True
-        ).get("nd").getInfo()
-    except Exception as e:
-        print(f"EE Point NDVI error: {e}")
-        ndvi_val = None
+    def fetch_ndvi():
+        try:
+            ndvi_img = (
+                ee.ImageCollection(SENTINEL2_DATASET)
+                .filterBounds(point.buffer(100))
+                .filterDate(f"{year}-01-01", f"{year}-12-31")
+                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_PERCENT))
+                .median()
+                .normalizedDifference(["B8", "B4"])
+            )
+            return ndvi_img.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(100),
+                scale=10,
+                bestEffort=True
+            ).get("nd").getInfo()
+        except Exception as e:
+            print(f"EE Point NDVI error: {e}")
+            return None
+
+    def fetch_recharge():
+        try:
+            recharge = get_recharge_image(year)
+            return recharge.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(25000),
+                scale=25000
+            ).get("recharge").getInfo()
+        except Exception as e:
+            print(f"EE Point recharge error: {e}")
+            return None
+
+    def fetch_water_quantity():
+        try:
+            quantity = get_water_quantity_image(year)
+            return quantity.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(100),
+                scale=10,
+                bestEffort=True
+            ).get("water_quantity").getInfo()
+        except Exception as e:
+            print(f"EE Point water quantity error: {e}")
+            return None
+
+    def fetch_suitability():
+        try:
+            suitability = get_suitability_image(year)
+            return suitability.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(100),
+                scale=10,
+                bestEffort=True
+            ).get("suitability").getInfo()
+        except Exception as e:
+            print(f"EE Point suitability error: {e}")
+            return None
+
+    with ThreadPoolExecutor(max_workers=7) as executor:
+        f_gwsa = executor.submit(fetch_gwsa)
+        f_gwd = executor.submit(fetch_gwd)
+        f_ndwi = executor.submit(fetch_ndwi)
+        f_ndvi = executor.submit(fetch_ndvi)
+        f_recharge = executor.submit(fetch_recharge)
+        f_water_quantity = executor.submit(fetch_water_quantity)
+        f_suitability = executor.submit(fetch_suitability)
+        
+        gw_val = f_gwsa.result()
+        gwd_val = f_gwd.result()
+        ndwi_val = f_ndwi.result()
+        ndvi_val = f_ndvi.result()
+        recharge_val = f_recharge.result()
+        water_quantity_val = f_water_quantity.result()
+        suitability_val = f_suitability.result()
 
     return {
         "lat": lat,
@@ -765,7 +970,10 @@ def get_point_data(lat: float, lon: float, year: int) -> dict:
         "gwsa": gw_val,
         "gwd": gwd_val,
         "ndwi": ndwi_val,
-        "ndvi": ndvi_val
+        "ndvi": ndvi_val,
+        "recharge": recharge_val,
+        "water_quantity": water_quantity_val,
+        "suitability": suitability_val
     }
 
 
