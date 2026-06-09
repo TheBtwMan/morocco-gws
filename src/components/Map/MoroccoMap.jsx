@@ -493,36 +493,11 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
   function MapLegend({ activeFilter }) {
     if (!activeFilter || activeFilter === 'Decision Making') return null;
 
-    const cardStyle = {
-      position: 'absolute',
-      bottom: '24px',
-      right: '24px',
-      zIndex: 1000,
-      background: 'rgba(255, 255, 255, 0.95)',
-      padding: '16px',
-      borderRadius: '12px',
-      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
-      minWidth: '220px',
-      border: '1px solid rgba(226, 232, 240, 0.8)',
-      fontFamily: "system-ui, -apple-system, sans-serif"
-    };
-
-    const titleStyle = {
-      margin: '0 0 10px',
-      fontSize: '13px',
-      fontWeight: '700',
-      color: '#0F172A',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px',
-      borderBottom: '1px solid #E2E8F0',
-      paddingBottom: '6px'
-    };
-
     let legendItems = [];
     let title = "";
 
     if (activeFilter === 'GWSA') {
-      title = "GWSA - Groundwater Storage Anomaly";
+      title = "GWSA — Groundwater Storage Anomaly";
       legendItems = [
         { label: "High Surplus (+3.0 to +4.0 cm)", color: "#4575b4" },
         { label: "Moderate Surplus (+2.0 to +3.0 cm)", color: "#91bfdb" },
@@ -532,7 +507,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
         { label: "Severe Deficit (-2.0 to -1.0 cm)", color: "#d73027" },
       ];
     } else if (activeFilter === 'GWD') {
-      title = "GWD - Groundwater Depth Change";
+      title = "GWD — Groundwater Depth Change";
       legendItems = [
         { label: "High Rise (+1.3 to +2.0 m)", color: "#4575b4" },
         { label: "Moderate Rise (+0.6 to +1.3 m)", color: "#91bfdb" },
@@ -542,7 +517,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
         { label: "Severe Drop (-2.0 to -1.3 m)", color: "#d73027" },
       ];
     } else if (activeFilter === 'Surface Water') {
-      title = "NDWI - Surface Water";
+      title = "NDWI — Surface Water";
       legendItems = [
         { label: "Permanent Water (0.5)", color: "#0000CD" },
         { label: "Water Bodies (0.3)", color: "#1E90FF" },
@@ -552,7 +527,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
         { label: "Very Dry Soil (-0.5)", color: "#8B4513" },
       ];
     } else if (activeFilter === 'Land Use' || activeFilter === 'NDVI') {
-      title = "NDVI - Land Use / Vegetation";
+      title = "NDVI — Land Use / Vegetation";
       legendItems = [
         { label: "Dense Forest (0.7+)", color: "#056201" },
         { label: "Moderate Vegetation (0.5)", color: "#74A901" },
@@ -562,7 +537,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
         { label: "No Vegetation (0.0)", color: "#FFFFFF" },
       ];
     } else if (activeFilter === 'Recharge') {
-      title = "GWR - Groundwater Recharge";
+      title = "GWR — Groundwater Recharge";
       legendItems = [
         { label: "High Recharge (>20 cm/yr)", color: "#084594" },
         { label: "Moderate-High (15-20 cm/yr)", color: "#2171b5" },
@@ -573,7 +548,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
         { label: "Minimal / None (0 cm/yr)", color: "#f7fbff" },
       ];
     } else if (activeFilter === 'Water Quantity') {
-      title = "SWQ - Surface Water Quantity";
+      title = "SWQ — Surface Water Quantity";
       legendItems = [
         { label: "Deep / Permanent (0.8 - 1.0)", color: "#08589e" },
         { label: "Major Reservoirs (0.6 - 0.8)", color: "#2b8cbe" },
@@ -585,7 +560,7 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
         { label: "No Surface Water (0.0)", color: "#f7fcf0" },
       ];
     } else if (activeFilter === 'Suitability') {
-      title = "LSI - Land Suitability Index";
+      title = "LSI — Land Suitability Index";
       legendItems = [
         { label: "Excellent Suitability (0.7 - 0.8)", color: "#056201" },
         { label: "High Suitability (0.6 - 0.7)", color: "#2bbe74" },
@@ -599,21 +574,16 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
     }
 
     return (
-      <div style={cardStyle}>
-        <h4 style={titleStyle}>{title}</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div className="map-legend-card" key={activeFilter}>
+        <h4 className="map-legend-title">{title}</h4>
+        <div className="map-legend-items">
           {legendItems.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11.5px', color: '#334155' }}>
-              <span style={{
-                display: 'inline-block',
-                width: '16px',
-                height: '16px',
-                borderRadius: '4px',
-                backgroundColor: item.color,
-                border: '1px solid rgba(0,0,0,0.15)',
-                flexShrink: 0
-              }} />
-              <span style={{ fontWeight: '500' }}>{item.label}</span>
+            <div key={i} className="map-legend-row">
+              <span
+                className="map-legend-swatch"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="map-legend-label">{item.label}</span>
             </div>
           ))}
         </div>

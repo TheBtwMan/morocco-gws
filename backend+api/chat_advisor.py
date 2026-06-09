@@ -229,6 +229,66 @@ def get_expert_report(region: str, year: int, gw_val: float, ndwi_val: float, nd
     """Fallback wrapper for backwards compatibility."""
     return get_expert_location_report(f"Region: {region}", None, None, year, gw_val, None, ndwi_val, ndvi_val)
 
+def calculate_viability(gw: float, water: float, veg: float) -> int:
+    """Calculates a unified viability score from groundwater, ndwi, and ndvi."""
+    gw_score = min(max(int((gw + 1.5) / 3.0 * 100), 0), 100)
+    ndwi_score = min(max(int((water + 0.5) * 100), 0), 100)
+    ndvi_score = min(max(int(veg / 0.8 * 100), 0), 100)
+    return int(0.35 * gw_score + 0.3 * ndwi_score + 0.35 * ndvi_score)
+
+def get_all_regions_summary(year: int) -> dict:
+    """Returns a dict mapping region names to their GEE metrics for the specified year, utilizing backend cache or fallback values."""
+    summary = {}
+    try:
+        gw_dataset = backend.get_all_regions_data(year, "gwsa") or {}
+        gwd_dataset = backend.get_all_regions_data(year, "gwd") or {}
+        ndwi_dataset = backend.get_all_regions_data(year, "ndwi") or {}
+        ndvi_dataset = backend.get_all_regions_data(year, "ndvi") or {}
+        recharge_dataset = backend.get_all_regions_data(year, "recharge") or {}
+        water_quantity_dataset = backend.get_all_regions_data(year, "water_quantity") or {}
+        suitability_dataset = backend.get_all_regions_data(year, "suitability") or {}
+    except Exception as e:
+        print(f"Failed to fetch GEE data for all regions: {e}")
+        gw_dataset, gwd_dataset, ndwi_dataset, ndvi_dataset, recharge_dataset, water_quantity_dataset, suitability_dataset = {}, {}, {}, {}, {}, {}, {}
+
+    region_defaults = {
+        "Souss-Massa": (-1.3, -0.6, 2.5, -0.22, 0.05, 0.25, 0.28),
+        "Marrakech-Safi": (-1.1, -0.5, 3.2, -0.18, 0.08, 0.28, 0.32),
+        "Casablanca-Settat": (-0.6, -0.3, 8.5, -0.05, 0.15, 0.42, 0.48),
+        "Rabat-Salâ-Kenitra": (-0.2, -0.1, 14.2, 0.12, 0.45, 0.55, 0.65),
+        "Tangier-Tetouan-Al Hoceima": (0.1, 0.05, 18.5, 0.18, 0.60, 0.62, 0.72),
+        "Fez-Meknes": (-0.4, -0.2, 11.0, 0.05, 0.25, 0.48, 0.52),
+        "Drâa-Tafilalet": (-1.4, -0.7, 1.2, -0.38, 0.02, 0.12, 0.15),
+        "Dakhla-Oued Ed-Dahab": (-0.2, -0.1, 0.8, -0.45, 0.01, 0.08, 0.10),
+        "Guelmim-Oued Noun": (-0.9, -0.4, 1.8, -0.32, 0.03, 0.15, 0.18),
+        "Laâyoune-Sakia El Hamra": (-0.5, -0.2, 1.0, -0.42, 0.02, 0.09, 0.11),
+        "Oriental": (-0.8, -0.4, 4.5, -0.25, 0.06, 0.22, 0.26),
+        "Béni Mellal-Khénifra": (-0.9, -0.4, 6.2, -0.08, 0.18, 0.38, 0.44),
+    }
+
+    for r in REGIONS:
+        gw = gw_dataset.get(r)
+        gwd = gwd_dataset.get(r)
+        recharge = recharge_dataset.get(r)
+        ndwi = ndwi_dataset.get(r)
+        swq = water_quantity_dataset.get(r)
+        ndvi = ndvi_dataset.get(r)
+        suit = suitability_dataset.get(r)
+        
+        # Use defaults if any value is None
+        def_gw, def_gwd, def_recharge, def_ndwi, def_swq, def_ndvi, def_suit = region_defaults.get(r, (-0.5, -0.25, 5.0, -0.15, 0.10, 0.30, 0.35))
+        
+        summary[r] = {
+            "gwsa": gw if gw is not None else def_gw,
+            "gwd": gwd if gwd is not None else def_gwd,
+            "recharge": recharge if recharge is not None else def_recharge,
+            "ndwi": ndwi if ndwi is not None else def_ndwi,
+            "water_quantity": swq if swq is not None else def_swq,
+            "ndvi": ndvi if ndvi is not None else def_ndvi,
+            "suitability": suit if suit is not None else def_suit,
+        }
+    return summary
+
 def generate_chat_response(message: str, history: list, year: int, current_index: str, current_region: str, current_location: dict = None) -> str:
     """Main chatbot engine. Detects region/location, integrates GEE data, and generates agricultural insights."""
     
@@ -313,7 +373,7 @@ $$\text{Quantity} = \frac{\max(\text{NDWI}, 0)}{0.5}$$
     if is_explain_query and ("suitability" in norm_msg or ("land" in norm_msg and "suitability" in norm_msg)):
         return """### 🚜 Land Suitability Index Explained
 
-**Land Suitability** is a multi-spectral decision model combining vegetative cover and soil moisture to score agricultural capacity:
+**Land Suitability is a multi-spectral decision model combining vegetative cover and soil moisture to score agricultural capacity:**
 
 $$\text{Suitability} = 0.6 \times \text{NDVI} + 0.4 \times (\text{NDWI} + 0.2)$$
 
@@ -459,27 +519,196 @@ Format your response beautifully in Markdown. Use bullet points, bold text, and 
             recharge_val, water_quantity_val, suitability_val
         )
 
-    # 5. Standard conversational responses or general inquiries about Morocco
-    if "invest" in norm_msg or "opportunit" in norm_msg:
-        return """### 🇲🇦 Morocco Resource & Investment General Outlook
+    # 5. Standard conversational responses or general inquiries about Morocco (location_title is None)
+    
+    # First, construct a detailed regions data summary for this year
+    summary = get_all_regions_summary(year)
+    
+    # Try Gemini if API key is present, even for general questions
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if api_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            
+            # Format the summary table for prompt context
+            summary_table = "Region | GWSA (cm) | GWD (m) | Recharge (cm/yr) | NDWI | SWQ | NDVI | LSI\n"
+            summary_table += "---|---|---|---|---|---|---|---\n"
+            for r_name, r_metrics in summary.items():
+                summary_table += f"{r_name} | {r_metrics['gwsa']:.2f} | {r_metrics['gwd']:.2f} | {r_metrics['recharge']:.2f} | {r_metrics['ndwi']:.2f} | {r_metrics['water_quantity']:.2f} | {r_metrics['ndvi']:.2f} | {r_metrics['suitability']:.2f}\n"
+            
+            prompt = f"""
+You are the Ardi Invest GeoAI Moroccan Resource & Investment Advisor, an expert agricultural economist and spatial analyst.
+You help farmers, developers, and investors assess agricultural suitability, crop viability, and water risks in Morocco.
 
-Morocco is an emerging hotspot for green transition investments, but geographical water resource disparities require highly localized screening. 
+A user has sent you this message: "{message}"
 
-#### 🚀 Key Investment Corridors
+Here is the GEE regional average data for all 12 regions of Morocco for the active map year {year}:
+{summary_table}
 
-1.  **Souss-Massa & Marrakech-Safi**:
-    *   **Outlook**: High Risk for Agriculture, World-Class for Solar and Water Technologies.
-    *   *Strategic Advice*: Transition out of heavy fruits (citrus) into high-value oils (olive/argan) and smart glasshouse farming.
-2.  **Rabat-Salé-Kenitra & Tangier-Tetouan-Al Hoceima**:
-    *   **Outlook**: Low-to-Medium Risk, Fertile soils, and higher NDWI water security.
-    *   *Strategic Advice*: Highly favorable for organic produce, berry crops, food packaging hubs, and wind power.
-3.  **Southern Regions (Dakhla & Laâyoune)**:
-    *   **Outlook**: High Aridity but Massive Coastal Opportunities.
-    *   *Strategic Advice*: Excellent for solar, wind energy, green hydrogen plants, greenhouse desalinated agriculture, and premium coastal aquaculture.
+Active Map View Details:
+- Year: {year}
+- Current Filter: {current_index}
 
-*💡 Select a specific region on the map or type a region's name (e.g., "Is Souss-Massa safe to invest in?") to receive a complete custom scientific report!*
+Please analyze this data to directly answer the user's question. If they ask about the best region for groundwater, recharge, suitability, vegetation, or surface water, use the GEE data table to identify the top regions. Explain why using the numbers, compare regions if requested, recommend crops/resilient strategies where applicable, and warn against water-heavy crops in water-stressed regions.
+
+Keep the tone professional, realistic, and highly insightful. Format your response beautifully in Markdown. Use bullet points, bold text, and warning blockquotes (> [!WARNING]) where appropriate. Do not exceed 450 words.
 """
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as gem_err:
+            print(f"Gemini API invocation failed for general query: {gem_err}. Using local comparison engine.")
 
+    # Local Rule-based Comparison Engine (if Gemini is unavailable)
+    is_gw_query = any(k in norm_msg for k in ["groundwater", "gwsa", "gwd", "aquifer", "nappe", "water table"])
+    is_recharge_query = any(k in norm_msg for k in ["recharge", "gwr", "replenish"])
+    is_suitability_query = any(k in norm_msg for k in ["suitability", "lsi", "fertile", "land", "soil"])
+    is_ndvi_query = any(k in norm_msg for k in ["ndvi", "vegetation", "canopy", "green"])
+    is_ndwi_query = any(k in norm_msg for k in ["ndwi", "surface water", "moisture", "swq", "reservoir", "lake"])
+    is_compare_query = any(k in norm_msg for k in ["compare", "ranking", "rank", "list", "regions", "where to invest"])
+
+    if is_gw_query:
+        ranked = sorted(summary.items(), key=lambda x: x[1]['gwsa'], reverse=True)
+        best_region, best_metrics = ranked[0]
+        worst_region, worst_metrics = ranked[-1]
+        
+        response_text = f"""### 💧 Groundwater Storage Anomaly (GWSA) Regional Report ({year})
+
+Based on **Google Earth Engine (GEE)** satellite models (GRACE anomaly and GLDAS water balance) for year **{year}**:
+
+The region with the **best groundwater stability** is **{best_region}** with a Groundwater Storage Anomaly (GWSA) of **{best_metrics['gwsa']:.3f} cm** and a natural recharge rate of **{best_metrics['recharge']:.2f} cm/yr**.
+
+#### 📈 Full Groundwater Rankings (GWSA Anomaly):
+"""
+        for rank, (r_name, r_metrics) in enumerate(ranked, 1):
+            status_dot = "🟢" if r_metrics['gwsa'] >= 0 else "🟡" if r_metrics['gwsa'] >= -0.8 else "🔴"
+            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['gwsa']:.3f} cm` (Depth change: `{r_metrics['gwd']:.2f} m`, Recharge: `{r_metrics['recharge']:.2f} cm/yr`)\n"
+            
+        response_text += f"""
+#### 🔍 Key Insight:
+*   **Most Stable**: **{best_region}** is currently experiencing the least aquifer depletion.
+*   **Most Critical**: **{worst_region}** (`{worst_metrics['gwsa']:.3f} cm`) has severe groundwater depletion. Investors should strictly avoid high-water crop models (e.g. avocado, watermelon) and implement subsurface drip irrigation in this zone.
+"""
+        return response_text
+
+    elif is_recharge_query:
+        ranked = sorted(summary.items(), key=lambda x: x[1]['recharge'], reverse=True)
+        best_region, best_metrics = ranked[0]
+        response_text = f"""### 🌧️ Groundwater Recharge (GWR) Regional Report ({year})
+
+Based on **Google Earth Engine** GLDAS water balance metrics for **{year}**:
+
+The region with the **highest active groundwater recharge rate** is **{best_region}** at **{best_metrics['recharge']:.2f} cm/yr**.
+
+#### 📈 Full Recharge Rate Rankings:
+"""
+        for rank, (r_name, r_metrics) in enumerate(ranked, 1):
+            status_dot = "🟢" if r_metrics['recharge'] >= 10.0 else "🟡" if r_metrics['recharge'] >= 2.0 else "🔴"
+            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['recharge']:.2f} cm/yr`\n"
+            
+        response_text += f"""
+#### 💡 Investment Relevance:
+Groundwater recharge represents the sustainable abstraction threshold. High recharge zones (like the northern regions) are better suited for long-term agricultural investments utilizing well networks, while low recharge zones (like southern and desert regions) require strictly closed-loop hydroponics or desalination.
+"""
+        return response_text
+
+    elif is_suitability_query:
+        ranked = sorted(summary.items(), key=lambda x: x[1]['suitability'], reverse=True)
+        best_region, best_metrics = ranked[0]
+        response_text = f"""### 🚜 Land Suitability Index (LSI) Regional Report ({year})
+
+Based on composite **Google Earth Engine** NDVI and NDWI agricultural suitability indexes for **{year}**:
+
+The region with the **highest agricultural land suitability** is **{best_region}** with a suitability index score of **{best_metrics['suitability']:.3f}/1.00**.
+
+#### 📈 Full Agricultural Suitability Rankings:
+"""
+        for rank, (r_name, r_metrics) in enumerate(ranked, 1):
+            status_dot = "🟢" if r_metrics['suitability'] >= 0.6 else "🟡" if r_metrics['suitability'] >= 0.35 else "🔴"
+            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['suitability']:.2f}`\n"
+            
+        response_text += f"""
+#### 💡 Investment Relevance:
+High land suitability (LSI > 0.60) correlates with healthy active canopies and excellent topsoil moisture. These regions are prime candidates for high-value organic crops, while lower scores (LSI < 0.35) are better suited for drought-resistant orchards or require intensive soil conditioning.
+"""
+        return response_text
+
+    elif is_ndvi_query:
+        ranked = sorted(summary.items(), key=lambda x: x[1]['ndvi'], reverse=True)
+        best_region, best_metrics = ranked[0]
+        response_text = f"""### 🌾 Vegetation Cover (NDVI) Regional Report ({year})
+
+Based on **Google Earth Engine** Sentinel-2 canopy measurements for **{year}**:
+
+The region with the **densest vegetation cover** is **{best_region}** with an average NDVI score of **{best_metrics['ndvi']:.3f}**.
+
+#### 📈 Full NDVI Rankings:
+"""
+        for rank, (r_name, r_metrics) in enumerate(ranked, 1):
+            status_dot = "🟢" if r_metrics['ndvi'] >= 0.4 else "🟡" if r_metrics['ndvi'] >= 0.15 else "🔴"
+            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['ndvi']:.3f}`\n"
+            
+        return response_text
+
+    elif is_ndwi_query:
+        ranked = sorted(summary.items(), key=lambda x: x[1]['ndwi'], reverse=True)
+        best_region, best_metrics = ranked[0]
+        response_text = f"""### 🌊 Surface Soil Moisture & Water Index (NDWI) Regional Report ({year})
+
+Based on **Google Earth Engine** Sentinel-2 water absorption band calculations for **{year}**:
+
+The region with the **highest soil moisture and surface water availability** is **{best_region}** with an average NDWI score of **{best_metrics['ndwi']:.3f}**.
+
+#### 📈 Full NDWI Rankings:
+"""
+        for rank, (r_name, r_metrics) in enumerate(ranked, 1):
+            status_dot = "🟢" if r_metrics['ndwi'] >= 0.15 else "🟡" if r_metrics['ndwi'] >= -0.2 else "🔴"
+            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['ndwi']:.3f}` (Surface Quantity SWQ: `{r_metrics['water_quantity']:.2f}`)\n"
+            
+        return response_text
+
+    elif is_compare_query or is_invest_query or "invest" in norm_msg or "opportunit" in norm_msg:
+        # Rank by calculated viability score
+        viabilities = []
+        for r_name, r_metrics in summary.items():
+            v_score = calculate_viability(r_metrics['gwsa'], r_metrics['ndwi'], r_metrics['ndvi'])
+            viabilities.append((r_name, v_score, r_metrics))
+        ranked = sorted(viabilities, key=lambda x: x[1], reverse=True)
+        
+        response_text = f"""### 🇲🇦 Moroccan Regional Agricultural Viability Rankings ({year})
+
+Using a multi-criteria decision index combining **Groundwater anomaly (35%)**, **Soil moisture (30%)**, and **Vegetation density (35%)** from **Google Earth Engine** measurements for **{year}**:
+
+#### 🟢 Prime Agricultural Zones (Viability Score >= 60)
+These zones possess strong soil moisture, stable vegetative cover, and minimal aquifer depletion risk. High potential for cash crops.
+"""
+        primes = [item for item in ranked if item[1] >= 60]
+        if primes:
+            for rank, (r_name, v_score, r_metrics) in enumerate(primes, 1):
+                response_text += f"- **{r_name}** (Score: `{v_score}/100`): Prime soil/water assets. Ideal for precision drip horticulture.\n"
+        else:
+            response_text += "*No regions met the high viability threshold for this year.*\n"
+            
+        response_text += "\n#### 🟡 Adaptive Agricultural Zones (Viability Score 35-59)\n"
+        response_text += "These zones require water conservation technologies, drought-resilient cultivars, and careful planning.\n"
+        adaptives = [item for item in ranked if 35 <= item[1] < 60]
+        for r_name, v_score, r_metrics in adaptives:
+            response_text += f"- **{r_name}** (Score: `{v_score}/100`): Favorable for olive/carob orchards with precise watering.\n"
+            
+        response_text += "\n#### 🔴 High-Stress Zones (Viability Score < 35)\n"
+        response_text += "Severe water stress or high soil aridity. Traditional crops are highly discouraged; prioritize agrotech or renewable energy.\n"
+        stresseds = [item for item in ranked if item[1] < 35]
+        for r_name, v_score, r_metrics in stresseds:
+            response_text += f"- **{r_name}** (Score: `{v_score}/100`): Critical water deficit. Limit deep boreholes.\n"
+            
+        response_text += f"""
+---
+*💡 Pro Tip: Turn on **"Sync Map Context"** and click on any region or custom coordinate point on the map to trigger a hyper-local soil and crop suitability report!*
+"""
+        return response_text
+
+    # Default starting welcome response
     return f"""### 👋 Welcome to the GeoAI Resource & Investment Advisor!
 
 I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**. I analyze soil, surface moisture, and deep aquifers in Morocco to help you make climate-resilient investment decisions.

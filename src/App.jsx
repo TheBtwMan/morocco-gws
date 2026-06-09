@@ -399,10 +399,13 @@ function App() {
     <div className="platform">
       <header className="topbar">
         <button className="back-hub-btn" onClick={() => setView('landing')}>
-          ← Marketing Page
+          <span className="back-arrow">←</span> Marketing Page
         </button>
-        <span>ARDI INVEST</span>
-        <div style={{ width: '100px' }}></div>
+        <div className="topbar-brand">
+          <div className="topbar-brand-dot"></div>
+          ARDI INVEST
+        </div>
+        <div style={{ width: '120px' }}></div>
       </header>
       <main className="layout">
         <aside className="sidebar">
@@ -427,7 +430,7 @@ function App() {
                 className={`dropdown-trigger ${activeFilter === 'GWSA' || activeFilter === 'GWD' || activeFilter === 'Recharge' ? 'active' : ''}`}
                 onClick={() => setGwDropdownOpen(!gwDropdownOpen)}
               >
-                Groundwater {activeFilter === 'GWSA' ? '(anomaly)' : activeFilter === 'GWD' ? '(depth)' : activeFilter === 'Recharge' ? '(recharge)' : ''} ▾
+                💧 Groundwater {activeFilter === 'GWSA' ? '· Anomaly' : activeFilter === 'GWD' ? '· Depth' : activeFilter === 'Recharge' ? '· Recharge' : ''} <span className="dropdown-chevron">▾</span>
               </button>
               {gwDropdownOpen && (
                 <div className="dropdown-menu">
@@ -439,7 +442,7 @@ function App() {
                       setGwDropdownOpen(false);
                     }}
                   >
-                    Groundwater storage anomaly
+                    💧 Storage Anomaly (GWSA)
                   </button>
                   <button
                     type="button"
@@ -449,7 +452,7 @@ function App() {
                       setGwDropdownOpen(false);
                     }}
                   >
-                    Groundwater depth
+                    🕳️ Depth Change (GWD)
                   </button>
                   <button
                     type="button"
@@ -459,7 +462,7 @@ function App() {
                       setGwDropdownOpen(false);
                     }}
                   >
-                    Groundwater recharge
+                    🌧️ Recharge Rate (GWR)
                   </button>
                 </div>
               )}
@@ -476,7 +479,7 @@ function App() {
                 className={`dropdown-trigger ${activeFilter === 'Surface Water' || activeFilter === 'Water Quantity' ? 'active' : ''}`}
                 onClick={() => setSwDropdownOpen(!swDropdownOpen)}
               >
-                Surface Water {activeFilter === 'Surface Water' ? '(NDWI)' : activeFilter === 'Water Quantity' ? '(quantity)' : ''} ▾
+                🌊 Surface Water {activeFilter === 'Surface Water' ? '· NDWI' : activeFilter === 'Water Quantity' ? '· Quantity' : ''} <span className="dropdown-chevron">▾</span>
               </button>
               {swDropdownOpen && (
                 <div className="dropdown-menu">
@@ -488,7 +491,7 @@ function App() {
                       setSwDropdownOpen(false);
                     }}
                   >
-                    Surface water (NDWI)
+                    🌊 Moisture Index (NDWI)
                   </button>
                   <button
                     type="button"
@@ -498,7 +501,7 @@ function App() {
                       setSwDropdownOpen(false);
                     }}
                   >
-                    Surface water quantity
+                    💧 Water Quantity (SWQ)
                   </button>
                 </div>
               )}
@@ -515,7 +518,7 @@ function App() {
                 className={`dropdown-trigger ${activeFilter === 'Land Use' || activeFilter === 'Suitability' ? 'active' : ''}`}
                 onClick={() => setLandDropdownOpen(!landDropdownOpen)}
               >
-                Land info {activeFilter === 'Land Use' ? '(vegetation)' : activeFilter === 'Suitability' ? '(suitability)' : ''} ▾
+                🌍 Land Info {activeFilter === 'Land Use' ? '· Vegetation' : activeFilter === 'Suitability' ? '· Suitability' : ''} <span className="dropdown-chevron">▾</span>
               </button>
               {landDropdownOpen && (
                 <div className="dropdown-menu">
@@ -527,7 +530,7 @@ function App() {
                       setLandDropdownOpen(false);
                     }}
                   >
-                    Land use (NDVI)
+                    🌾 Vegetation Cover (NDVI)
                   </button>
                   <button
                     type="button"
@@ -537,7 +540,7 @@ function App() {
                       setLandDropdownOpen(false);
                     }}
                   >
-                    Land suitability
+                    🚜 Land Suitability (LSI)
                   </button>
                 </div>
               )}
@@ -554,27 +557,31 @@ function App() {
           </div>
         </section>
         <aside className="info-panel">
-          <div>
-            <label>YEAR</label>
+          <div className="year-section">
+            <label>TEMPORAL RANGE</label>
+            <div className="year-display">{selectedYear}</div>
             <input type="range" min={minYear} max={maxYear} step="1" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} />
-            <span>{selectedYear}</span>
           </div>
-          <div className="admin-buttons">
-            <button
-              onClick={() => setAdminLevel('admin0-all')}
-              className={adminLevel === 'admin0-all' ? 'admin-btn active' : 'admin-btn'}>
-              Admin0 : All the map
-            </button>
-            <button
-              onClick={() => setAdminLevel('admin1-communes')}
-              className={adminLevel === 'admin1-communes' ? 'admin-btn active' : 'admin-btn'}>
-              Admin1 : Communes
-            </button>
-            <button
-              onClick={() => setAdminLevel('admin2-regions')}
-              className={adminLevel === 'admin2-regions' ? 'admin-btn active' : 'admin-btn'}>
-              Admin2 : Regions
-            </button>
+          <div className="panel-divider"></div>
+          <div>
+            <label>INSPECTION MODE</label>
+            <div className="admin-buttons">
+              <button
+                onClick={() => setAdminLevel('admin0-all')}
+                className={adminLevel === 'admin0-all' ? 'admin-btn active' : 'admin-btn'}>
+                <span className="admin-icon">📍</span> Point Inspector
+              </button>
+              <button
+                onClick={() => setAdminLevel('admin1-communes')}
+                className={adminLevel === 'admin1-communes' ? 'admin-btn active' : 'admin-btn'}>
+                <span className="admin-icon">🏡</span> Commune Level
+              </button>
+              <button
+                onClick={() => setAdminLevel('admin2-regions')}
+                className={adminLevel === 'admin2-regions' ? 'admin-btn active' : 'admin-btn'}>
+                <span className="admin-icon">🗺️</span> Region Level
+              </button>
+            </div>
           </div>
         </aside>
       </main>
