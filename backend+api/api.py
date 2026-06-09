@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
     current_year: Optional[int] = 2024
     current_index: Optional[str] = None
     current_region: Optional[str] = None
+    current_location: Optional[dict] = None
 
 
 app = FastAPI(
@@ -188,7 +189,8 @@ def chat_query(request: ChatRequest):
             history=[{"role": m.role, "content": m.content} for m in request.history],
             year=request.current_year or 2024,
             current_index=request.current_index,
-            current_region=request.current_region
+            current_region=request.current_region,
+            current_location=request.current_location
         )
         return {"response": response_text}
     except Exception as e:

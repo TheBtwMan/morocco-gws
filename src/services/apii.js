@@ -90,7 +90,8 @@ export async function postChatQuery(message, history = [], context = {}) {
             history: history,
             current_year: context.year ? parseInt(context.year) : 2024,
             current_index: context.index,
-            current_region: context.region
+            current_region: context.region,
+            current_location: context.location
         })
     });
 

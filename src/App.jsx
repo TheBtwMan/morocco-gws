@@ -4,7 +4,7 @@ import { postChatQuery, preloadAllPlatformData } from './services/apii.js';
 import LandingPage from './components/LandingPage.jsx';
 import './App.css';
 
-function GeoAIChat({ currentYear, currentIndex, initialQuery, clearInitialQuery }) {
+function GeoAIChat({ currentYear, currentIndex, selectedLocation, initialQuery, clearInitialQuery }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -64,7 +64,8 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
     try {
       const context = syncMapContext ? {
         year: currentYear,
-        index: currentIndex
+        index: currentIndex,
+        location: selectedLocation
       } : {};
       
       const history = messages.slice(-10); // send last 10 messages for history context
@@ -198,6 +199,55 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
         )}
       </div>
 
+      {selectedLocation && syncMapContext && (
+        <div className={`chat-synced-location ${selectedLocation.loading ? 'loading' : ''}`}>
+          <div className="synced-location-header">
+            <span className="location-pin">
+              {selectedLocation.title.includes("Region") ? "🗺️" : selectedLocation.title.includes("Commune") ? "🏡" : "📍"}
+            </span>
+            <div className="location-info">
+              <span className="location-title">{selectedLocation.title}</span>
+              <span className="location-coords">
+                Lat: {parseFloat(selectedLocation.lat).toFixed(4)}, Lon: {parseFloat(selectedLocation.lon).toFixed(4)}
+              </span>
+            </div>
+            <button 
+              className="location-analyze-btn" 
+              onClick={() => handleSend("Analyze agricultural suitability and water risk for the selected location.")}
+              disabled={isLoading || selectedLocation.loading}
+            >
+              Analyze
+            </button>
+          </div>
+          
+          {selectedLocation.loading ? (
+            <div className="synced-location-loading">
+              <div className="synced-location-spinner"></div>
+              <span>Syncing GEE data...</span>
+            </div>
+          ) : selectedLocation.data && (
+            <div className="synced-location-metrics">
+              <div className="metric-badge">
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.gwsa === null ? '#94a3b8' : selectedLocation.data.gwsa < -0.8 ? '#f87171' : selectedLocation.data.gwsa < 0 ? '#fbbf24' : '#34d399' }} />
+                <span>GWSA: {selectedLocation.data.gwsa !== null ? `${selectedLocation.data.gwsa.toFixed(2)} cm` : 'N/A'}</span>
+              </div>
+              <div className="metric-badge">
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.gwd === null ? '#94a3b8' : selectedLocation.data.gwd < -0.4 ? '#f87171' : selectedLocation.data.gwd < 0 ? '#fbbf24' : '#34d399' }} />
+                <span>GWD: {selectedLocation.data.gwd !== null ? `${selectedLocation.data.gwd.toFixed(2)} m` : 'N/A'}</span>
+              </div>
+              <div className="metric-badge">
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.ndwi === null ? '#94a3b8' : selectedLocation.data.ndwi < -0.2 ? '#f87171' : selectedLocation.data.ndwi < 0.15 ? '#fbbf24' : '#34d399' }} />
+                <span>NDWI: {selectedLocation.data.ndwi !== null ? selectedLocation.data.ndwi.toFixed(2) : 'N/A'}</span>
+              </div>
+              <div className="metric-badge">
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.ndvi === null ? '#94a3b8' : selectedLocation.data.ndvi < 0.15 ? '#f87171' : selectedLocation.data.ndvi < 0.4 ? '#fbbf24' : '#34d399' }} />
+                <span>NDVI: {selectedLocation.data.ndvi !== null ? selectedLocation.data.ndvi.toFixed(2) : 'N/A'}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="chat-presets">
         <span className="chat-presets-title">Quick Inquiries</span>
         <div className="preset-pills">
@@ -239,6 +289,7 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
 function App() {
   const [view, setView] = useState('landing');
   const [initialQuery, setInitialQuery] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
 
   const [activeFilter, setActiveFilter] = useState('GWSA');
   const [gwDropdownOpen, setGwDropdownOpen] = useState(false);
@@ -331,6 +382,7 @@ function App() {
           <GeoAIChat 
             currentYear={debouncedYear} 
             currentIndex={activeFilter} 
+            selectedLocation={selectedLocation}
             initialQuery={initialQuery}
             clearInitialQuery={() => setInitialQuery(null)}
           />
@@ -387,7 +439,13 @@ function App() {
 
           </div>
           <div className="map-canvas">
-            <MoroccoMap selectedYear={debouncedYear} activeFilter={activeFilter} adminLevel={adminLevel} />
+            <MoroccoMap 
+              selectedYear={debouncedYear} 
+              activeFilter={activeFilter} 
+              adminLevel={adminLevel} 
+              inspector={selectedLocation}
+              onInspect={setSelectedLocation}
+            />
           </div>
         </section>
         <aside className="info-panel">
