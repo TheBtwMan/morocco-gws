@@ -136,6 +136,50 @@ body.platform-active {
   font-size: 14px;
 }
 
+/* Admin Mode Badge in Topbar */
+.admin-mode-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  margin-left: 8px;
+  animation: adminBadgePulse 3s infinite ease-in-out;
+}
+
+@keyframes adminBadgePulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(168, 85, 247, 0.3); }
+  50% { box-shadow: 0 0 14px rgba(168, 85, 247, 0.5); }
+}
+
+/* Admin Dashboard Toggle Button */
+.admin-toggle-btn {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all var(--duration-normal) var(--ease-out);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.admin-toggle-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+  transform: translateY(-1px);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Sidebar Container
    ───────────────────────────────────────────────────────────────────────────── */

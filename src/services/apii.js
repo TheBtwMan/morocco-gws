@@ -152,3 +152,21 @@ export function preloadAllPlatformData(onProgress) {
 
     startPreload();
 }
+
+// ── Admin Dashboard API ─────────────────────────────────────────────────────
+
+export async function getAdminStats() {
+    const response = await fetch(`${API_BASE}/admin/stats`);
+    if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+}
+
+export async function getAdminChatHistory(limit = 50, offset = 0) {
+    const response = await fetch(`${API_BASE}/admin/history?limit=${limit}&offset=${offset}`);
+    if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+}

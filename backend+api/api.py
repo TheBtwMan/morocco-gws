@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime
+from collections import Counter
 import backend
 import chat_advisor
 
@@ -31,6 +33,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── In-memory chat history log for admin dashboard ───────────────────────────
+chat_history: list = []
 
 
 # ── Regions ──────────────────────────────────────────────────────────────────
@@ -192,6 +197,21 @@ def chat_query(request: ChatRequest):
             current_region=request.current_region,
             current_location=request.current_location
         )
+
+        # Log this interaction for admin dashboard
+        location_title = None
+        if request.current_location and isinstance(request.current_location, dict):
+            location_title = request.current_location.get("title", None)
+
+        chat_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "user_message": request.message,
+            "ai_response": response_text[:300] if response_text else "",
+            "index": request.current_index,
+            "region": request.current_region or location_title,
+            "year": request.current_year or 2024,
+        })
+
         return {"response": response_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -206,4 +226,56 @@ def get_point_data(lat: float = Query(..., description="Latitude"), lon: float =
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Admin Endpoints ──────────────────────────────────────────────────────────
+
+@app.get("/admin/history")
+def get_admin_history(
+    limit: int = Query(50, description="Max number of records to return"),
+    offset: int = Query(0, description="Offset for pagination"),
+):
+    """Returns the chat interaction history log (most recent first)."""
+    sorted_history = list(reversed(chat_history))
+    page = sorted_history[offset : offset + limit]
+    return {
+        "total": len(chat_history),
+        "limit": limit,
+        "offset": offset,
+        "history": page,
+    }
+
+
+@app.get("/admin/stats")
+def get_admin_stats():
+    """Returns aggregated usage statistics for the admin dashboard."""
+    total_queries = len(chat_history)
+
+    # Most queried regions
+    region_counter = Counter(
+        entry["region"] for entry in chat_history if entry.get("region")
+    )
+    top_regions = region_counter.most_common(5)
+
+    # Most used indices
+    index_counter = Counter(
+        entry["index"] for entry in chat_history if entry.get("index")
+    )
+    top_indices = index_counter.most_common(5)
+
+    # Queries per day
+    day_counter = Counter(
+        entry["timestamp"][:10] for entry in chat_history if entry.get("timestamp")
+    )
+    queries_per_day = [
+        {"date": date, "count": count}
+        for date, count in sorted(day_counter.items())
+    ]
+
+    return {
+        "total_queries": total_queries,
+        "top_regions": [{"name": r, "count": c} for r, c in top_regions],
+        "top_indices": [{"name": i, "count": c} for i, c in top_indices],
+        "queries_per_day": queries_per_day,
+    }
 

@@ -567,6 +567,7 @@ Keep the tone professional, realistic, and highly insightful. Format your respon
     is_ndvi_query = any(k in norm_msg for k in ["ndvi", "vegetation", "canopy", "green"])
     is_ndwi_query = any(k in norm_msg for k in ["ndwi", "surface water", "moisture", "swq", "reservoir", "lake"])
     is_compare_query = any(k in norm_msg for k in ["compare", "ranking", "rank", "list", "regions", "where to invest"])
+    is_invest_query = any(k in norm_msg for k in ["invest", "opportunity", "opportunities", "viability", "viable"])
 
     if is_gw_query:
         ranked = sorted(summary.items(), key=lambda x: x[1]['gwsa'], reverse=True)

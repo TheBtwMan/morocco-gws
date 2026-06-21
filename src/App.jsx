@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import MoroccoMap from './components/Map/MoroccoMap.jsx';
 import { postChatQuery, preloadAllPlatformData } from './services/apii.js';
 import LandingPage from './components/LandingPage.jsx';
+import RoleSelection from './components/RoleSelection.jsx';
+import AdminDashboard from './components/AdminDashboard.jsx';
 import './App.css';
 
 function GeoAIChat({ currentYear, currentIndex, selectedLocation, initialQuery, clearInitialQuery }) {
@@ -302,6 +304,8 @@ function App() {
   const [view, setView] = useState('landing');
   const [initialQuery, setInitialQuery] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const [activeFilter, setActiveFilter] = useState('GWSA');
   const [gwDropdownOpen, setGwDropdownOpen] = useState(false);
@@ -388,6 +392,16 @@ function App() {
     if (query) {
       setInitialQuery(query);
     }
+    setView('role-select');
+  };
+
+  const handleSelectUser = () => {
+    setIsAdmin(false);
+    setView('platform');
+  };
+
+  const handleSelectAdmin = () => {
+    setIsAdmin(true);
     setView('platform');
   };
 
@@ -395,17 +409,34 @@ function App() {
     return <LandingPage onLaunch={handleLaunchPlatform} />;
   }
 
+  if (view === 'role-select') {
+    return (
+      <RoleSelection
+        onSelectUser={handleSelectUser}
+        onSelectAdmin={handleSelectAdmin}
+        onBack={() => setView('landing')}
+      />
+    );
+  }
+
   return (
     <div className="platform">
       <header className="topbar">
-        <button className="back-hub-btn" onClick={() => setView('landing')}>
-          <span className="back-arrow">←</span> Marketing Page
+        <button className="back-hub-btn" onClick={() => setView('role-select')}>
+          <span className="back-arrow">←</span> Role Selection
         </button>
         <div className="topbar-brand">
           <div className="topbar-brand-dot"></div>
           ARDI INVEST
+          {isAdmin && <span className="admin-mode-badge">ADMIN</span>}
         </div>
-        <div style={{ width: '120px' }}></div>
+        <div style={{ width: '120px', display: 'flex', justifyContent: 'flex-end' }}>
+          {isAdmin && (
+            <button className="admin-toggle-btn" onClick={() => setShowAdminPanel(true)}>
+              📊 Dashboard
+            </button>
+          )}
+        </div>
       </header>
       <main className="layout">
         <aside className="sidebar">
@@ -585,6 +616,14 @@ function App() {
           </div>
         </aside>
       </main>
+
+      {/* Admin Dashboard Overlay */}
+      {isAdmin && (
+        <AdminDashboard
+          isOpen={showAdminPanel}
+          onClose={() => setShowAdminPanel(false)}
+        />
+      )}
     </div>
   );
 }

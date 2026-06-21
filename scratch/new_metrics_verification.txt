@@ -1,0 +1,64 @@
+New Metrics GEE Point Verification
+==================================
+
+Point: Lat=31.6295, Lon=-7.9811, Year=2024
+Response: {
+  "lat": 31.6295,
+  "lon": -7.9811,
+  "year": 2024,
+  "gwsa": 1.5534789387390993,
+  "gwd": 0.13593202249159209,
+  "ndwi": -0.1549892901457494,
+  "ndvi": 0.044435112393411344,
+  "recharge": 0.19293778619988097,
+  "water_quantity": 0,
+  "suitability": 0.044665351377747076
+}
+
+[SUCCESS] All 7 metrics returned successfully.
+
+=========================================
+Chat Advisor Response Verification
+=========================================
+
+### 📊 Agricultural & Soil Suitability Report: **📍 Test Farm Area** (Lat: 31.6295, Lon: -7.9811)
+
+Based on live **Google Earth Engine (GEE)** indicators for year **2024**, here is the climate-resilient agricultural assessment:
+
+---
+
+#### 🌟 Viability Class: **🟡 MODERATE RISK / ADAPTIVE STRATEGY REQUIRED**
+#### 📈 Resource Score: **46/100**
+
+*Favorable for drought-resistant cultivars using advanced water-saving techniques.*
+
+---
+
+#### 🗺️ Agro-Climatic Zone: **Arid / Semi-Arid Southern Zone**
+*   **Climate Profile**: High solar radiation, sparse rainfall, and high evapotranspiration. Aquifer depletion is a severe concern.
+*   **Recommended Resilient Crops**:
+*   🌴 **Majhool Date Palms**: Highly tolerant of heat and dry conditions, with exceptional market returns.
+*   🌳 **Argan Trees**: Endemic to the region, deep-rooting to bind soil and withstand extreme drought.
+*   🌿 **Carob (Kharroub)**: Low water requirement, high value seeds, excellent for preventing desertification.
+*   🌵 **Cactus Pear & Aromatic Herbs**: Forage/fruit with minimal transpiration loss; rosemary/thyme for high-margin oils.
+*   **High-Risk Crops to Exclude**: *Watermelons, avocados, flood-irrigated alfalfa, and high-volume open-field vegetables.*
+
+---
+
+#### 🔍 Environmental Indices & Soil Advice
+
+*   💧 **Groundwater Storage (GWSA)**: **1.553 cm** (🟢 Stable/Recharging)
+    *   *Advice*: Aquifer is in stable condition. Limit abstraction to recharge rates. Consider seasonal water storage.
+*   🕳️ **Groundwater Depth (GWD)**: **0.136 m** (🟢 Stable/Recharging Water Table)
+    *   *Advice*: Groundwater depth has risen or stabilized by 0.14 meters. Maintain sustainable withdrawal rates.
+*   🌧️ **Groundwater Recharge (GWR)**: **0.193 cm/yr** (🔴 Extremely Low Recharge)
+    *   *Advice*: The aquifer receives almost zero natural recharge (0.19 cm/yr). Withdrawals must be strictly limited; prioritize indoor agrotech.
+*   🌊 **Surface Soil Moisture (NDWI)**: **-0.155** (🟡 Moderate Moisture)
+    *   *Advice*: Damp to dry soil. Deploy IoT soil moisture tensiometer probes to schedule watering only when soil suction thresholds are crossed.
+*   🌊 **Surface Water Quantity (SWQ)**: **0.000** (🔴 Critical Surface Deficit)
+    *   *Advice*: Surface water presence is extremely scarce (0.00). Channel flow or open reservoir storage is unfeasible. Use closed tank storage.
+*   🌾 **Vegetation Density (NDVI)**: **0.044** (🔴 Bare Soil/Desert)
+    *   *Advice*: Very low canopy cover. Plant windbreak tree lines (e.g. cypress) to mitigate dry winds. Cultivate winter cover crops to reconstruct organic topsoil.
+*   🚜 **Land Suitability Index (LSI)**: **0.045** (🔴 Low Agriculture Suitability)
+    *   *Advice*: Multi-spectral land capacity is low (0.04). Avoid commercial cropping without intensive soil conditioning cover crops.
+
