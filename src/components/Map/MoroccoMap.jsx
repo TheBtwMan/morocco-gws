@@ -140,9 +140,9 @@ function SpatialInspectorCard({ inspector, onClose }) {
                 <div className="inspector-index-item">
                   <span className="inspector-index-label">🌧️ Groundwater Recharge (GWR)</span>
                   <span className="inspector-index-value" style={{
-                    color: data.recharge === null ? '#94a3b8' : data.recharge < 2.0 ? '#f87171' : data.recharge < 10.0 ? '#fbbf24' : '#34d399'
+                    color: data.recharge === null ? '#94a3b8' : data.recharge < 0.0 ? '#f87171' : data.recharge < 4.0 ? '#fbbf24' : '#34d399'
                   }}>
-                    {data.recharge !== null ? `${data.recharge.toFixed(3)} cm` : 'No Data'}
+                    {data.recharge !== null ? `${data.recharge.toFixed(3)} mm` : 'No Data'}
                   </span>
                 </div>
               )}
@@ -537,15 +537,14 @@ function MoroccoMap({ selectedYear, activeFilter, adminLevel, inspector, onInspe
         { label: "No Vegetation (0.0)", color: "#FFFFFF" },
       ];
     } else if (activeFilter === 'Recharge') {
-      title = "GWR — Groundwater Recharge";
+      title = "GWR — Groundwater Recharge (mm/yr)";
       legendItems = [
-        { label: "High Recharge (>20 cm/yr)", color: "#084594" },
-        { label: "Moderate-High (15-20 cm/yr)", color: "#2171b5" },
-        { label: "Moderate (10-15 cm/yr)", color: "#4292c6" },
-        { label: "Low-Moderate (5-10 cm/yr)", color: "#6baed6" },
-        { label: "Very Low (2-5 cm/yr)", color: "#9ecae1" },
-        { label: "Deficit (0-2 cm/yr)", color: "#deebf7" },
-        { label: "Minimal / None (0 cm/yr)", color: "#f7fbff" },
+        { label: "High Surplus (+5.0 to +8.0 mm/yr)", color: "#4575b4" },
+        { label: "Moderate Surplus (+2.0 to +5.0 mm/yr)", color: "#91bfdb" },
+        { label: "Mild Surplus (+0.5 to +2.0 mm/yr)", color: "#e0f3f8" },
+        { label: "Normal / Stable (0.0 to +0.5 mm/yr)", color: "#fee090" },
+        { label: "Moderate Deficit (-5.0 to 0.0 mm/yr)", color: "#fc8d59" },
+        { label: "Severe Deficit (-10.0 to -5.0 mm/yr)", color: "#d73027" },
       ];
     } else if (activeFilter === 'Water Quantity') {
       title = "SWQ — Surface Water Quantity";

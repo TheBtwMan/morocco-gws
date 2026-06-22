@@ -54,7 +54,7 @@ def get_expert_location_report(
     # Calculate subscores and overall score
     gw = gw_val if gw_val is not None else -0.5
     gwd = gwd_val if gwd_val is not None else -0.25
-    gwr = recharge_val if recharge_val is not None else 5.0
+    gwr = recharge_val if recharge_val is not None else 50.0
     water = ndwi_val if ndwi_val is not None else -0.1
     swq = water_quantity_val if water_quantity_val is not None else 0.1
     veg = ndvi_val if ndvi_val is not None else 0.25
@@ -130,15 +130,15 @@ def get_expert_location_report(
         gwd_advice = f"Groundwater depth has risen or stabilized by {gwd:.2f} meters. Maintain sustainable withdrawal rates."
 
     # Recharge advice
-    if gwr < 2.0:
-        gwr_status = "🔴 Extremely Low Recharge"
-        gwr_advice = f"The aquifer receives almost zero natural recharge ({gwr:.2f} cm/yr). Withdrawals must be strictly limited; prioritize indoor agrotech."
-    elif gwr < 10.0:
-        gwr_status = "🟡 Moderate Recharge"
-        gwr_advice = f"Moderate active recharge ({gwr:.2f} cm/yr). Apply water-conserving tillage and manage seasonal pumping volumes."
+    if gwr < 0.0:
+        gwr_status = "🔴 Recharge Deficit (Evapotranspiration > Precipitation)"
+        gwr_advice = f"The region is under net recharge deficit ({gwr:.2f} mm/yr). Aquifers are highly vulnerable."
+    elif gwr < 4.0:
+        gwr_status = "🟡 Low-Moderate Recharge"
+        gwr_advice = f"Low active recharge ({gwr:.2f} mm/yr). Sustainable extraction is required."
     else:
-        gwr_status = "🟢 High Active Recharge"
-        gwr_advice = f"Aquifer is actively replenished ({gwr:.2f} cm/yr). Safe for sustainable long-term irrigation projects."
+        gwr_status = "🟢 Good Active Recharge"
+        gwr_advice = f"Aquifer is actively replenished ({gwr:.2f} mm/yr). Safe for sustainable long-term irrigation projects."
 
     if water < -0.2:
         ndwi_status = "🔴 Dry/Arid Soil"
@@ -212,7 +212,7 @@ Based on live **Google Earth Engine (GEE)** indicators for year **{year}**, here
     *   *Advice*: {gw_advice}
 *   🕳️ **Groundwater Depth (GWD)**: **{gwd:.3f} m** ({gwd_status})
     *   *Advice*: {gwd_advice}
-*   🌧️ **Groundwater Recharge (GWR)**: **{gwr:.3f} cm/yr** ({gwr_status})
+*   🌧️ **Groundwater Recharge (GWR)**: **{gwr:.3f} mm/yr** ({gwr_status})
     *   *Advice*: {gwr_advice}
 *   🌊 **Surface Soil Moisture (NDWI)**: **{water:.3f}** ({ndwi_status})
     *   *Advice*: {ndwi_advice}
@@ -252,18 +252,18 @@ def get_all_regions_summary(year: int) -> dict:
         gw_dataset, gwd_dataset, ndwi_dataset, ndvi_dataset, recharge_dataset, water_quantity_dataset, suitability_dataset = {}, {}, {}, {}, {}, {}, {}
 
     region_defaults = {
-        "Souss-Massa": (-1.3, -0.6, 2.5, -0.22, 0.05, 0.25, 0.28),
-        "Marrakech-Safi": (-1.1, -0.5, 3.2, -0.18, 0.08, 0.28, 0.32),
-        "Casablanca-Settat": (-0.6, -0.3, 8.5, -0.05, 0.15, 0.42, 0.48),
-        "Rabat-Salâ-Kenitra": (-0.2, -0.1, 14.2, 0.12, 0.45, 0.55, 0.65),
-        "Tangier-Tetouan-Al Hoceima": (0.1, 0.05, 18.5, 0.18, 0.60, 0.62, 0.72),
-        "Fez-Meknes": (-0.4, -0.2, 11.0, 0.05, 0.25, 0.48, 0.52),
-        "Drâa-Tafilalet": (-1.4, -0.7, 1.2, -0.38, 0.02, 0.12, 0.15),
-        "Dakhla-Oued Ed-Dahab": (-0.2, -0.1, 0.8, -0.45, 0.01, 0.08, 0.10),
-        "Guelmim-Oued Noun": (-0.9, -0.4, 1.8, -0.32, 0.03, 0.15, 0.18),
-        "Laâyoune-Sakia El Hamra": (-0.5, -0.2, 1.0, -0.42, 0.02, 0.09, 0.11),
-        "Oriental": (-0.8, -0.4, 4.5, -0.25, 0.06, 0.22, 0.26),
-        "Béni Mellal-Khénifra": (-0.9, -0.4, 6.2, -0.08, 0.18, 0.38, 0.44),
+        "Souss-Massa": (-1.3, -0.6, 25.0, -0.22, 0.05, 0.25, 0.28),
+        "Marrakech-Safi": (-1.1, -0.5, 32.0, -0.18, 0.08, 0.28, 0.32),
+        "Casablanca-Settat": (-0.6, -0.3, 85.0, -0.05, 0.15, 0.42, 0.48),
+        "Rabat-Salâ-Kenitra": (-0.2, -0.1, 142.0, 0.12, 0.45, 0.55, 0.65),
+        "Tangier-Tetouan-Al Hoceima": (0.1, 0.05, 185.0, 0.18, 0.60, 0.62, 0.72),
+        "Fez-Meknes": (-0.4, -0.2, 110.0, 0.05, 0.25, 0.48, 0.52),
+        "Drâa-Tafilalet": (-1.4, -0.7, 12.0, -0.38, 0.02, 0.12, 0.15),
+        "Dakhla-Oued Ed-Dahab": (-0.2, -0.1, 8.0, -0.45, 0.01, 0.08, 0.10),
+        "Guelmim-Oued Noun": (-0.9, -0.4, 18.0, -0.32, 0.03, 0.15, 0.18),
+        "Laâyoune-Sakia El Hamra": (-0.5, -0.2, 10.0, -0.42, 0.02, 0.09, 0.11),
+        "Oriental": (-0.8, -0.4, 45.0, -0.25, 0.06, 0.22, 0.26),
+        "Béni Mellal-Khénifra": (-0.9, -0.4, 62.0, -0.08, 0.18, 0.38, 0.44),
     }
 
     for r in REGIONS:
@@ -276,7 +276,7 @@ def get_all_regions_summary(year: int) -> dict:
         suit = suitability_dataset.get(r)
         
         # Use defaults if any value is None
-        def_gw, def_gwd, def_recharge, def_ndwi, def_swq, def_ndvi, def_suit = region_defaults.get(r, (-0.5, -0.25, 5.0, -0.15, 0.10, 0.30, 0.35))
+        def_gw, def_gwd, def_recharge, def_ndwi, def_swq, def_ndvi, def_suit = region_defaults.get(r, (-0.5, -0.25, 50.0, -0.15, 0.10, 0.30, 0.35))
         
         summary[r] = {
             "gwsa": gw if gw is not None else def_gw,
@@ -348,11 +348,11 @@ $$\text{NDWI} = \\frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$$
 
 $$\text{Recharge} = \max(\text{Precipitation} - \text{Evapotranspiration}, 0) \times 0.20$$
 
-*   **Metric**: Centimeters of water equivalent per year (cm/yr).
+*   **Metric**: Millimeters of water equivalent per year (mm/yr).
 *   **Interpretation**:
-    *   `< 2.0 cm/yr`: Extremely low recharge. Aquifers are highly vulnerable, and withdrawals must be strictly managed.
-    *   `2.0 to 10.0 cm/yr`: Moderate replenishment. Requires balanced water extraction.
-    *   `> 10.0 cm/yr`: High active recharge. Favorable for sustainable agro-infrastructure.
+    *   `< 0.0 mm/yr`: Recharge deficit (evapotranspiration exceeds precipitation). Aquifers are highly vulnerable.
+    *   `0.0 to 4.0 mm/yr`: Low-moderate replenishment. Requires balanced extraction.
+    *   `> 4.0 mm/yr`: Good active recharge. Favorable for sustainable agro-infrastructure.
 *   **Investment Relevance**: Helps target areas where deep groundwater is actively recharged, minimizing the risk of rapid water-table drops.
 """
 
@@ -448,20 +448,20 @@ $$\text{Suitability} = 0.6 \times \text{NDVI} + 0.4 \times (\text{NDWI} + 0.2)$$
             # Fallback to realistic values based on climatological averages of regions in case GEE is unreachable
             print(f"GEE backend query failed: {e}. Using regional approximations.")
             region_defaults = {
-                "Souss-Massa": (-1.3, -0.6, 2.5, -0.22, 0.05, 0.25, 0.28),
-                "Marrakech-Safi": (-1.1, -0.5, 3.2, -0.18, 0.08, 0.28, 0.32),
-                "Casablanca-Settat": (-0.6, -0.3, 8.5, -0.05, 0.15, 0.42, 0.48),
-                "Rabat-Salâ-Kenitra": (-0.2, -0.1, 14.2, 0.12, 0.45, 0.55, 0.65),
-                "Tangier-Tetouan-Al Hoceima": (0.1, 0.05, 18.5, 0.18, 0.60, 0.62, 0.72),
-                "Fez-Meknes": (-0.4, -0.2, 11.0, 0.05, 0.25, 0.48, 0.52),
-                "Drâa-Tafilalet": (-1.4, -0.7, 1.2, -0.38, 0.02, 0.12, 0.15),
-                "Dakhla-Oued Ed-Dahab": (-0.2, -0.1, 0.8, -0.45, 0.01, 0.08, 0.10),
-                "Guelmim-Oued Noun": (-0.9, -0.4, 1.8, -0.32, 0.03, 0.15, 0.18),
-                "Laâyoune-Sakia El Hamra": (-0.5, -0.2, 1.0, -0.42, 0.02, 0.09, 0.11),
-                "Oriental": (-0.8, -0.4, 4.5, -0.25, 0.06, 0.22, 0.26),
-                "Béni Mellal-Khénifra": (-0.9, -0.4, 6.2, -0.08, 0.18, 0.38, 0.44),
+                "Souss-Massa": (-1.3, -0.6, 25.0, -0.22, 0.05, 0.25, 0.28),
+                "Marrakech-Safi": (-1.1, -0.5, 32.0, -0.18, 0.08, 0.28, 0.32),
+                "Casablanca-Settat": (-0.6, -0.3, 85.0, -0.05, 0.15, 0.42, 0.48),
+                "Rabat-Salâ-Kenitra": (-0.2, -0.1, 142.0, 0.12, 0.45, 0.55, 0.65),
+                "Tangier-Tetouan-Al Hoceima": (0.1, 0.05, 185.0, 0.18, 0.60, 0.62, 0.72),
+                "Fez-Meknes": (-0.4, -0.2, 110.0, 0.05, 0.25, 0.48, 0.52),
+                "Drâa-Tafilalet": (-1.4, -0.7, 12.0, -0.38, 0.02, 0.12, 0.15),
+                "Dakhla-Oued Ed-Dahab": (-0.2, -0.1, 8.0, -0.45, 0.01, 0.08, 0.10),
+                "Guelmim-Oued Noun": (-0.9, -0.4, 18.0, -0.32, 0.03, 0.15, 0.18),
+                "Laâyoune-Sakia El Hamra": (-0.5, -0.2, 10.0, -0.42, 0.02, 0.09, 0.11),
+                "Oriental": (-0.8, -0.4, 45.0, -0.25, 0.06, 0.22, 0.26),
+                "Béni Mellal-Khénifra": (-0.9, -0.4, 62.0, -0.08, 0.18, 0.38, 0.44),
             }
-            gw_val, gwd_val, recharge_val, ndwi_val, water_quantity_val, ndvi_val, suitability_val = region_defaults.get(region, (-0.5, -0.25, 5.0, -0.15, 0.10, 0.30, 0.35))
+            gw_val, gwd_val, recharge_val, ndwi_val, water_quantity_val, ndvi_val, suitability_val = region_defaults.get(region, (-0.5, -0.25, 50.0, -0.15, 0.10, 0.30, 0.35))
 
     # 4. Generate response for the determined location/point
     if location_title:
@@ -488,7 +488,7 @@ Here is the scientific sensor data we fetched from Google Earth Engine for the {
 - Coordinates: {f"Latitude: {lat:.4f}, Longitude: {lon:.4f}" if is_custom_point else "Regional average"}
 - Groundwater Anomaly (GWSA): {gw_val:.3f} cm (GRACE)
 - Groundwater Depth Change (GWD): {gwd_val:.3f} m if gwd_val else "N/A"
-- Groundwater Recharge (GWR): {recharge_val:.3f} cm/yr if recharge_val else "N/A"
+- Groundwater Recharge (GWR): {recharge_val:.3f} mm/yr if recharge_val else "N/A"
 - Surface Soil Moisture (NDWI): {ndwi_val:.3f}
 - Surface Water Quantity (SWQ): {water_quantity_val:.3f} if water_quantity_val else "N/A"
 - Vegetation Health Index (NDVI): {ndvi_val:.3f}
@@ -533,7 +533,7 @@ Format your response beautifully in Markdown. Use bullet points, bold text, and 
             model = genai.GenerativeModel("gemini-2.5-flash")
             
             # Format the summary table for prompt context
-            summary_table = "Region | GWSA (cm) | GWD (m) | Recharge (cm/yr) | NDWI | SWQ | NDVI | LSI\n"
+            summary_table = "Region | GWSA (cm) | GWD (m) | Recharge (mm/yr) | NDWI | SWQ | NDVI | LSI\n"
             summary_table += "---|---|---|---|---|---|---|---\n"
             for r_name, r_metrics in summary.items():
                 summary_table += f"{r_name} | {r_metrics['gwsa']:.2f} | {r_metrics['gwd']:.2f} | {r_metrics['recharge']:.2f} | {r_metrics['ndwi']:.2f} | {r_metrics['water_quantity']:.2f} | {r_metrics['ndvi']:.2f} | {r_metrics['suitability']:.2f}\n"
@@ -578,13 +578,13 @@ Keep the tone professional, realistic, and highly insightful. Format your respon
 
 Based on **Google Earth Engine (GEE)** satellite models (GRACE anomaly and GLDAS water balance) for year **{year}**:
 
-The region with the **best groundwater stability** is **{best_region}** with a Groundwater Storage Anomaly (GWSA) of **{best_metrics['gwsa']:.3f} cm** and a natural recharge rate of **{best_metrics['recharge']:.2f} cm/yr**.
+The region with the **best groundwater stability** is **{best_region}** with a Groundwater Storage Anomaly (GWSA) of **{best_metrics['gwsa']:.3f} cm** and a natural recharge rate of **{best_metrics['recharge']:.2f} mm/yr**.
 
 #### 📈 Full Groundwater Rankings (GWSA Anomaly):
 """
         for rank, (r_name, r_metrics) in enumerate(ranked, 1):
             status_dot = "🟢" if r_metrics['gwsa'] >= 0 else "🟡" if r_metrics['gwsa'] >= -0.8 else "🔴"
-            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['gwsa']:.3f} cm` (Depth change: `{r_metrics['gwd']:.2f} m`, Recharge: `{r_metrics['recharge']:.2f} cm/yr`)\n"
+            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['gwsa']:.3f} cm` (Depth change: `{r_metrics['gwd']:.2f} m`, Recharge: `{r_metrics['recharge']:.2f} mm/yr`)\n"
             
         response_text += f"""
 #### 🔍 Key Insight:
@@ -600,13 +600,13 @@ The region with the **best groundwater stability** is **{best_region}** with a G
 
 Based on **Google Earth Engine** GLDAS water balance metrics for **{year}**:
 
-The region with the **highest active groundwater recharge rate** is **{best_region}** at **{best_metrics['recharge']:.2f} cm/yr**.
+The region with the **highest active groundwater recharge rate** is **{best_region}** at **{best_metrics['recharge']:.2f} mm/yr**.
 
 #### 📈 Full Recharge Rate Rankings:
 """
         for rank, (r_name, r_metrics) in enumerate(ranked, 1):
-            status_dot = "🟢" if r_metrics['recharge'] >= 10.0 else "🟡" if r_metrics['recharge'] >= 2.0 else "🔴"
-            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['recharge']:.2f} cm/yr`\n"
+            status_dot = "🟢" if r_metrics['recharge'] >= 4.0 else "🟡" if r_metrics['recharge'] >= 0.0 else "🔴"
+            response_text += f"{rank}. {status_dot} **{r_name}**: `{r_metrics['recharge']:.2f} mm/yr`\n"
             
         response_text += f"""
 #### 💡 Investment Relevance:

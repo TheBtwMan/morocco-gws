@@ -171,15 +171,16 @@ def get_boundary() -> ee.Geometry:
 
 
 def get_recharge_image(year: int) -> ee.Image:
-    """Computes Groundwater Recharge proxy in cm using GLDAS Water Balance:
-    Recharge = Max(Precipitation - Evapotranspiration, 0) * 0.20
-    Precipitation is 'Rainf_tavg' (kg/m2/s) accumulated over year (multiply by 3153600).
-    Evapotranspiration is 'Evap_tavg' (kg/m2/s) accumulated over year (multiply by 3153600).
+    """Computes Groundwater Recharge proxy in mm using GLDAS Water Balance:
+    Recharge = (Precipitation - Evapotranspiration) * 0.20
+    Precipitation is 'Rainf_tavg' (kg/m2/s) accumulated over year (multiply by 31536000).
+    Evapotranspiration is 'Evap_tavg' (kg/m2/s) accumulated over year (multiply by 31536000).
     """
     gldas = ee.ImageCollection(GLDAS_DATASET).select(["Rainf_tavg", "Evap_tavg"]).filterDate(f"{year}-01-01", f"{year + 1}-01-01").mean()
-    precip = gldas.select("Rainf_tavg").multiply(3153600) # Convert kg/m2/s to cm/year
-    evap = gldas.select("Evap_tavg").multiply(3153600)
-    recharge = precip.subtract(evap).multiply(0.20).clamp(0, 100).rename("recharge")
+    proj = gldas.select("Rainf_tavg").projection()
+    precip = gldas.select("Rainf_tavg").multiply(31536000) # Convert kg/m2/s to mm/year
+    evap = gldas.select("Evap_tavg").multiply(31536000)
+    recharge = precip.subtract(evap).multiply(0.20).clamp(-10.0, 8.0).rename("recharge").setDefaultProjection(proj)
     return recharge
 
 
@@ -675,9 +676,9 @@ def get_time_series(region_name: str, index: str, start_year: int, end_year: int
             start = ee.Date.fromYMD(y, 1, 1)
             end = ee.Date.fromYMD(y, 12, 31)
             gldas = ee.ImageCollection(GLDAS_DATASET).select(["Rainf_tavg", "Evap_tavg"]).filterDate(start, end).mean()
-            precip = gldas.select("Rainf_tavg").multiply(3153600)
-            evap = gldas.select("Evap_tavg").multiply(3153600)
-            recharge = precip.subtract(evap).multiply(0.20).clamp(0, 100).rename("recharge")
+            precip = gldas.select("Rainf_tavg").multiply(31536000)
+            evap = gldas.select("Evap_tavg").multiply(31536000)
+            recharge = precip.subtract(evap).multiply(0.20).clamp(-10.0, 8.0).rename("recharge")
             val = recharge.reduceRegion(
                 reducer=ee.Reducer.mean(),
                 geometry=region_geom,
@@ -808,11 +809,11 @@ def get_tile_url(year: int, index: str) -> str:
             "palette": ["#d73027", "#fc8d59", "#fee090", "#e0f3f8", "#91bfdb", "#4575b4"],
         }
     elif index_lower in ["recharge", "groundwater recharge"]:
-        image = get_recharge_image(year).clip(morocco_border)
+        image = get_recharge_image(year).resample('bilinear').clip(morocco_border)
         vis_params = {
-            "min": 0,
-            "max": 25,
-            "palette": ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#084594"],
+            "min": -10,
+            "max": 8,
+            "palette": ["#d73027", "#fc8d59", "#fee090", "#e0f3f8", "#91bfdb", "#4575b4"],
         }
     elif index_lower in ["water quantity", "water_quantity", "surface water quantity"]:
         image = get_water_quantity_image(year).clip(morocco_border)

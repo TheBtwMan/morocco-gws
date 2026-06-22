@@ -238,8 +238,8 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
                 <span>GWD: {selectedLocation.data.gwd !== null ? `${selectedLocation.data.gwd.toFixed(2)} m` : 'N/A'}</span>
               </div>
               <div className="metric-badge">
-                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.recharge === null ? '#94a3b8' : selectedLocation.data.recharge < 2.0 ? '#f87171' : selectedLocation.data.recharge < 10.0 ? '#fbbf24' : '#34d399' }} />
-                <span>GWR: {selectedLocation.data.recharge !== null ? `${selectedLocation.data.recharge.toFixed(2)} cm` : 'N/A'}</span>
+                <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.recharge === null ? '#94a3b8' : selectedLocation.data.recharge < 0.0 ? '#f87171' : selectedLocation.data.recharge < 4.0 ? '#fbbf24' : '#34d399' }} />
+                <span>GWR: {selectedLocation.data.recharge !== null ? `${selectedLocation.data.recharge.toFixed(2)} mm` : 'N/A'}</span>
               </div>
               <div className="metric-badge">
                 <span className="badge-dot" style={{ backgroundColor: selectedLocation.data.ndwi === null ? '#94a3b8' : selectedLocation.data.ndwi < -0.2 ? '#f87171' : selectedLocation.data.ndwi < 0.15 ? '#fbbf24' : '#34d399' }} />
@@ -461,7 +461,7 @@ function App() {
                 className={`dropdown-trigger ${activeFilter === 'GWSA' || activeFilter === 'GWD' || activeFilter === 'Recharge' ? 'active' : ''}`}
                 onClick={() => setGwDropdownOpen(!gwDropdownOpen)}
               >
-                💧 Groundwater {activeFilter === 'GWSA' ? '· Anomaly' : activeFilter === 'GWD' ? '· Depth' : activeFilter === 'Recharge' ? '· Recharge' : ''} <span className="dropdown-chevron">▾</span>
+                💧 Groundwater {activeFilter === 'GWSA' ? '· Storage' : activeFilter === 'GWD' ? '· Depth' : activeFilter === 'Recharge' ? '· Recharge' : ''} <span className="dropdown-chevron">▾</span>
               </button>
               {gwDropdownOpen && (
                 <div className="dropdown-menu">

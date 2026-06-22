@@ -329,7 +329,7 @@ export default function LandingPage({ onLaunch }) {
                       </div>
                       <div className="mock-chat-bubble advisor">
                         <p style={{ margin: '0 0 6px 0', color: '#7BD4E9' }}><strong>🤖 Ardi Invest Advisor:</strong></p>
-                        <p style={{ margin: 0 }}>Souss-Massa shows <strong>Moderate Viability (46/100)</strong>. Groundwater Recharge (GWR) is extremely low (0.19 cm/yr). We recommend <strong>Majhool Date Palms</strong> or <strong>Argan Trees</strong>, and warn against high-water crops.</p>
+                        <p style={{ margin: 0 }}>Souss-Massa shows <strong>Moderate Viability (46/100)</strong>. Groundwater Recharge (GWR) is extremely low (1.93 mm/yr). We recommend <strong>Majhool Date Palms</strong> or <strong>Argan Trees</strong>, and warn against high-water crops.</p>
                       </div>
                     </div>
                   </div>
