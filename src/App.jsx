@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import MoroccoMap from './components/Map/MoroccoMap.jsx';
 import { postChatQuery, preloadAllPlatformData } from './services/apii.js';
 import LandingPage from './components/LandingPage.jsx';
@@ -6,11 +6,7 @@ import RoleSelection from './components/RoleSelection.jsx';
 import AdminDashboard from './components/AdminDashboard.jsx';
 import './App.css';
 
-function GeoAIChat({ currentYear, currentIndex, selectedLocation, initialQuery, clearInitialQuery }) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: `### 👋 Welcome to the GeoAI Resource & Investment Advisor!
+const WELCOME_MSG = `### 👋 Welcome to the GeoAI Resource & Investment Advisor!
 
 I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**. I analyze soil, surface moisture, and deep aquifers in Morocco to help you make climate-resilient investment decisions.
 
@@ -19,21 +15,28 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
 2.  **Learn about scientific indices**: Ask *"What is NDWI?"*, *"Explain NDVI"*, or *"How is groundwater measured?"*.
 3.  **Use Active Map Context**: Check **"Sync Map Context"** below. When enabled, asking *"Is it safe to invest here?"* will automatically analyze the active region, year, and index currently selected on your map view!
 
-*Select a preset question pill below or type your custom query to begin!*`
-    }
+*Select a preset question pill below or type your custom query to begin!*`;
+
+function GeoAIChat({ currentYear, currentIndex, selectedLocation, initialQuery, clearInitialQuery }) {
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: WELCOME_MSG, time: new Date() }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [syncMapContext, setSyncMapContext] = useState(true);
+  const [streamingText, setStreamingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState(null);
   
   const chatMessagesRef = useRef(null);
+  const streamingRef = useRef(null);
 
   // Auto-scroll to bottom of chat without shifting the page viewport
   useEffect(() => {
     if (chatMessagesRef.current) {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingText]);
 
   // Handle queries passed from the landing page
   useEffect(() => {
@@ -52,13 +55,44 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
     { label: "💧 Best Groundwater region?", text: "Which region in Morocco currently has the best groundwater reserves?" },
     { label: "📈 Marrakech-Safi crop risk?", text: "What are the agricultural and drought investment risks in Marrakech-Safi?" },
     { label: "☀️ Invest in Dakhla solar?", text: "Is Dakhla-Oued Ed-Dahab a good region for renewable energy or solar investments?" },
-    { label: "🌊 Explain NDWI water index", text: "Explain the NDWI surface water index and what it tells us." }
+    { label: "🌊 Explain NDWI water index", text: "Explain the NDWI surface water index and what it tells us." },
+    { label: "🕳️ Explain GWD depth", text: "Explain the Groundwater Depth (GWD) index and what it tells us." }
   ];
 
-  const handleSend = async (text) => {
-    if (!text || text.trim() === '') return;
+  // Typewriter streaming effect
+  const streamResponse = useCallback((fullText) => {
+    setIsStreaming(true);
+    setStreamingText('');
+    let i = 0;
+    const speed = 4; // ms per character
     
-    const userMsg = { role: 'user', content: text };
+    const tick = () => {
+      if (i < fullText.length) {
+        // Emit larger chunks for speed
+        const chunk = fullText.substring(0, i + 3);
+        setStreamingText(chunk);
+        i += 3;
+        streamingRef.current = requestAnimationFrame(() => setTimeout(tick, speed));
+      } else {
+        setStreamingText('');
+        setIsStreaming(false);
+        setMessages(prev => [...prev, { role: 'assistant', content: fullText, time: new Date() }]);
+      }
+    };
+    tick();
+  }, []);
+
+  // Cleanup streaming on unmount
+  useEffect(() => {
+    return () => {
+      if (streamingRef.current) cancelAnimationFrame(streamingRef.current);
+    };
+  }, []);
+
+  const handleSend = async (text) => {
+    if (!text || text.trim() === '' || isStreaming) return;
+    
+    const userMsg = { role: 'user', content: text, time: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
     setIsLoading(true);
@@ -70,19 +104,19 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
         location: selectedLocation
       } : {};
       
-      const history = messages.slice(-10); // send last 10 messages for history context
-
+      const history = messages.slice(-10);
       const response = await postChatQuery(text, history, context);
       
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      setIsLoading(false);
+      streamResponse(response);
     } catch (err) {
       console.error(err);
+      setIsLoading(false);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `⚠️ **Connection Error**: Failed to reach the GeoAI service. Please make sure the FastAPI server is running at http://localhost:8000.`
+        content: `⚠️ **Connection Error**: Failed to reach the GeoAI service. Please make sure the FastAPI server is running at http://localhost:8000.`,
+        time: new Date()
       }]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -92,41 +126,66 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
     }
   };
 
+  const handleClear = () => {
+    if (streamingRef.current) cancelAnimationFrame(streamingRef.current);
+    setStreamingText('');
+    setIsStreaming(false);
+    setIsLoading(false);
+    setMessages([{ role: 'assistant', content: WELCOME_MSG, time: new Date() }]);
+  };
+
+  const handleCopy = (text, idx) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 1500);
+    });
+  };
+
+  const formatTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // ── Markdown Rendering ──────────────────────────────────────────────────
+
   function parseInlineMarkdown(text) {
     if (!text) return "";
-    const parts = text.split(/(\*\*.*?\*\*)/g);
+    // Split on: **bold**, *italic*, `code`
+    const parts = text.split(/(\*\*.*?\*\*|`[^`]+`|\*[^*]+\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         const rawText = part.substring(2, part.length - 2);
-        if (rawText.includes("HIGH RISK") || rawText.includes("Severe")) {
+        if (rawText.includes("HIGH RISK") || rawText.includes("Severe") || rawText.includes("SEVERE")) {
           return <span key={i} className="risk-badge badge-red">{rawText}</span>;
-        } else if (rawText.includes("MODERATE RISK") || rawText.includes("Moderate")) {
+        } else if (rawText.includes("MODERATE RISK") || rawText.includes("Moderate") || rawText.includes("MODERATE")) {
           return <span key={i} className="risk-badge badge-yellow">{rawText}</span>;
-        } else if (rawText.includes("HIGH VIABILITY") || rawText.includes("Stable") || rawText.includes("Excellent")) {
+        } else if (rawText.includes("HIGH VIABILITY") || rawText.includes("Stable") || rawText.includes("Excellent") || rawText.includes("STRONG")) {
           return <span key={i} className="risk-badge badge-green">{rawText}</span>;
         }
-        return <strong key={i} style={{ color: '#7BD4E9', fontWeight: 'bold' }}>{rawText}</strong>;
+        return <strong key={i} className="md-bold">{rawText}</strong>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={i} className="md-inline-code">{part.substring(1, part.length - 1)}</code>;
+      }
+      if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+        return <em key={i} className="md-italic">{part.substring(1, part.length - 1)}</em>;
       }
       return part;
     });
   }
 
   function renderMath(line, idx) {
-    // Strip surrounding $$
     let formula = line.replace(/^\$\$/, '').replace(/\$\$$/, '').trim();
-    
-    // Replace standard LaTeX macros with clean equivalents
     formula = formula.replace(/\\text\{([^{}]+)\}/g, '$1');
     formula = formula.replace(/\\times/g, ' × ');
     formula = formula.replace(/\\max/g, 'max');
 
-    // Check if there is a fraction: \frac{num}{den}
     const fracMatch = formula.match(/\\frac\{([^{}]+)\}\{([^{}]+)\}/);
     if (fracMatch) {
       const fullMatch = fracMatch[0];
       const numerator = fracMatch[1];
       const denominator = fracMatch[2];
-      
       const parts = formula.split(fullMatch);
       const leftText = parts[0] || "";
       const rightText = parts[1] || "";
@@ -142,7 +201,6 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
         </div>
       );
     }
-
     return (
       <div key={idx} className="math-block">
         <span className="math-text">{formula}</span>
@@ -156,50 +214,69 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
     return lines.map((line, idx) => {
       const trimmed = line.trim();
       if (!trimmed) return <div key={idx} style={{ height: '6px' }} />;
-      if (trimmed === '---') return <hr key={idx} style={{ border: 0, height: '1px', background: '#313142', margin: '8px 0' }} />;
+      if (trimmed === '---') return <hr key={idx} className="md-hr" />;
       
       if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
         return renderMath(trimmed, idx);
       }
 
       if (trimmed.startsWith('### ')) {
-        return <h3 key={idx}>{trimmed.substring(4)}</h3>;
+        return <h3 key={idx}>{parseInlineMarkdown(trimmed.substring(4))}</h3>;
       }
       if (trimmed.startsWith('#### ')) {
-        return <h4 key={idx}>{trimmed.substring(5)}</h4>;
+        return <h4 key={idx}>{parseInlineMarkdown(trimmed.substring(5))}</h4>;
       }
       
       if (trimmed.startsWith('>')) {
         let quoteText = trimmed.substring(1).trim();
-        let alertStyle = {};
+        let alertClass = 'md-blockquote';
         if (quoteText.startsWith('[!WARNING]')) {
           quoteText = quoteText.replace('[!WARNING]', '').trim();
-          alertStyle = { borderLeft: '3px solid #ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', margin: '4px 0' };
+          alertClass = 'md-alert md-alert-warning';
         } else if (quoteText.startsWith('[!IMPORTANT]')) {
           quoteText = quoteText.replace('[!IMPORTANT]', '').trim();
-          alertStyle = { borderLeft: '3px solid #f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', margin: '4px 0' };
+          alertClass = 'md-alert md-alert-important';
         } else if (quoteText.startsWith('[!TIP]')) {
           quoteText = quoteText.replace('[!TIP]', '').trim();
-          alertStyle = { borderLeft: '3px solid #10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '4px 8px', margin: '4px 0' };
+          alertClass = 'md-alert md-alert-tip';
         }
         return (
-          <blockquote key={idx} style={alertStyle}>
+          <blockquote key={idx} className={alertClass}>
             {parseInlineMarkdown(quoteText)}
           </blockquote>
         );
       }
+
+      // Numbered lists: "1. ", "2. ", etc.
+      const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
+      if (numberedMatch) {
+        return (
+          <div key={idx} className="md-numbered-item">
+            <span className="md-number">{numberedMatch[1]}.</span>
+            <span>{parseInlineMarkdown(numberedMatch[2])}</span>
+          </div>
+        );
+      }
       
+      // Nested indented list items (4+ spaces followed by * or -)
+      if (line.match(/^\s{4,}\*\s/) || line.match(/^\s{4,}-\s/)) {
+        const content = trimmed.substring(2);
+        return (
+          <ul key={idx} className="md-nested-list">
+            <li>{parseInlineMarkdown(content)}</li>
+          </ul>
+        );
+      }
+
       if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
         return (
-          <ul key={idx} style={{ margin: '3px 0 3px 14px', paddingLeft: 0 }}>
-            <li style={{ listStyleType: 'disc', fontSize: '12px' }}>
-              {parseInlineMarkdown(trimmed.substring(2))}
-            </li>
+          <ul key={idx} className="md-list">
+            <li>{parseInlineMarkdown(trimmed.substring(2))}</li>
           </ul>
         );
       }
       
-      return <p key={idx} style={{ margin: '0 0 6px 0' }}>{parseInlineMarkdown(trimmed)}</p>;
+      return <p key={idx} className="md-paragraph">{parseInlineMarkdown(trimmed)}</p>;
     });
   }
 
@@ -208,6 +285,9 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
       <div className="chat-header">
         <div className="chat-indicator"></div>
         <h3>GeoAI Advisor</h3>
+        <button className="chat-clear-btn" onClick={handleClear} title="Clear conversation">
+          🗑️
+        </button>
       </div>
 
       <div className="chat-context-box">
@@ -232,9 +312,36 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
       <div className="chat-messages" ref={chatMessagesRef}>
         {messages.map((msg, i) => (
           <div key={i} className={`chat-message ${msg.role}`}>
-            {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+            {msg.role === 'assistant' ? (
+              <>
+                {renderMarkdown(msg.content)}
+                <div className="msg-footer">
+                  <span className="msg-timestamp">{formatTime(msg.time)}</span>
+                  <button 
+                    className={`msg-copy-btn ${copiedIdx === i ? 'copied' : ''}`}
+                    onClick={() => handleCopy(msg.content, i)}
+                    title="Copy to clipboard"
+                  >
+                    {copiedIdx === i ? '✓' : '📋'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {msg.content}
+                <div className="msg-footer msg-footer-user">
+                  <span className="msg-timestamp">{formatTime(msg.time)}</span>
+                </div>
+              </>
+            )}
           </div>
         ))}
+        {isStreaming && (
+          <div className="chat-message assistant streaming">
+            {renderMarkdown(streamingText)}
+            <span className="streaming-cursor" />
+          </div>
+        )}
         {isLoading && (
           <div className="chat-loading">
             <span className="dot"></span>
@@ -259,7 +366,7 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
             <button 
               className="location-analyze-btn" 
               onClick={() => handleSend("Analyze agricultural suitability and water risk for the selected location.")}
-              disabled={isLoading || selectedLocation.loading}
+              disabled={isLoading || isStreaming || selectedLocation.loading}
             >
               Analyze
             </button>
@@ -313,7 +420,7 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
               key={i} 
               className="preset-pill" 
               onClick={() => handleSend(p.text)}
-              disabled={isLoading}
+              disabled={isLoading || isStreaming}
               title={p.text}
             >
               {p.label}
@@ -329,12 +436,12 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask about indices or investment..."
-          disabled={isLoading}
+          disabled={isLoading || isStreaming}
         />
         <button 
           className="chat-send-btn" 
           onClick={() => handleSend(inputValue)}
-          disabled={isLoading || !inputValue.trim()}
+          disabled={isLoading || isStreaming || !inputValue.trim()}
         >
           Ask
         </button>

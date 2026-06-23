@@ -616,6 +616,25 @@ body.platform-active {
   text-transform: uppercase;
   letter-spacing: 1.5px;
   margin: 0;
+  flex: 1;
+}
+
+.chat-clear-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-out);
+  line-height: 1;
+}
+
+.chat-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 
 .chat-indicator {
@@ -679,7 +698,7 @@ body.platform-active {
   box-shadow: var(--shadow-sm);
 }
 
-/* Markdown in assistant messages */
+/* ── Markdown Typography in Chat ── */
 .chat-message.assistant h3 {
   color: var(--accent);
   font-family: var(--font-display);
@@ -697,33 +716,86 @@ body.platform-active {
   font-weight: 600;
 }
 
-.chat-message.assistant hr {
+.md-hr {
   border: 0;
   height: 1px;
-  background: var(--color-border-subtle);
-  margin: 8px 0;
+  background: linear-gradient(90deg, transparent, var(--color-border-subtle), transparent);
+  margin: 10px 0;
 }
 
-.chat-message.assistant p {
-  margin-bottom: 6px;
+.md-paragraph {
+  margin: 0 0 6px 0;
 }
 
-.chat-message.assistant p:last-child {
+.md-paragraph:last-of-type {
   margin-bottom: 0;
 }
 
-.chat-message.assistant ul {
-  margin-left: 14px;
-  margin-bottom: 6px;
+.md-bold {
+  color: #7BD4E9;
+  font-weight: 700;
+}
+
+.md-inline-code {
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
+  color: var(--accent-bright);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.md-italic {
+  font-style: italic;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+/* ── Lists ── */
+.md-list {
+  margin: 3px 0 3px 14px;
   padding-left: 0;
 }
 
-.chat-message.assistant li {
-  margin-bottom: 3px;
+.md-list li {
   list-style-type: disc;
+  font-size: 12px;
+  margin-bottom: 3px;
 }
 
-.chat-message.assistant blockquote {
+.md-nested-list {
+  margin: 2px 0 2px 28px;
+  padding-left: 0;
+}
+
+.md-nested-list li {
+  list-style-type: circle;
+  font-size: 11.5px;
+  margin-bottom: 2px;
+  color: var(--text-secondary);
+}
+
+.md-numbered-item {
+  display: flex;
+  gap: 6px;
+  margin: 3px 0;
+  padding-left: 4px;
+  font-size: 12px;
+}
+
+.md-number {
+  color: var(--accent);
+  font-weight: 700;
+  font-family: var(--font-display);
+  min-width: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Alert Blockquotes ── */
+.md-blockquote {
   border-left: 3px solid var(--accent);
   background: rgba(var(--accent-rgb), 0.04);
   margin: 6px 0;
@@ -733,7 +805,30 @@ body.platform-active {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-/* Risk badges */
+.md-alert {
+  margin: 8px 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: normal;
+}
+
+.md-alert-warning {
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.md-alert-important {
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.md-alert-tip {
+  border-left: 3px solid #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* ── Risk Badges ── */
 .chat-message.assistant .risk-badge {
   display: inline-block;
   font-size: 9.5px;
@@ -741,6 +836,98 @@ body.platform-active {
   border-radius: var(--radius-sm);
   font-weight: bold;
   letter-spacing: 0.5px;
+}
+
+.badge-red {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge-yellow {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.badge-green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* ── Message Footer (timestamp + copy) ── */
+.msg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.msg-footer-user {
+  justify-content: flex-end;
+  border-top: none;
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+.msg-timestamp {
+  font-size: 9px;
+  color: var(--text-faint);
+  font-family: var(--font-body);
+  opacity: 0.6;
+}
+
+.msg-copy-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-faint);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: all var(--duration-fast) var(--ease-out);
+  line-height: 1;
+}
+
+.chat-message.assistant:hover .msg-copy-btn {
+  opacity: 0.6;
+}
+
+.msg-copy-btn:hover {
+  opacity: 1 !important;
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent);
+}
+
+.msg-copy-btn.copied {
+  opacity: 1 !important;
+  color: #34d399;
+}
+
+/* ── Streaming Cursor ── */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: cursorBlink 0.8s infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.chat-message.streaming {
+  border-color: rgba(var(--accent-rgb), 0.2);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.06);
 }
 
 /* Typing Indicator */
@@ -843,11 +1030,14 @@ body.platform-active {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 110px;
+  max-height: 150px;
   overflow-y: auto;
 }
 
 .preset-pill {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
   color: var(--text-secondary);
@@ -863,6 +1053,15 @@ body.platform-active {
   text-overflow: ellipsis;
   position: relative;
   padding-left: 14px;
+}
+
+.preset-pill:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.preset-pill:active {
+  background: rgba(var(--accent-deep-rgb), 0.12);
 }
 
 .preset-pill::before {
@@ -895,6 +1094,7 @@ body.platform-active {
 .preset-pill:nth-child(3) { animation: pillSlideIn 0.3s 0.10s var(--ease-out) both; }
 .preset-pill:nth-child(4) { animation: pillSlideIn 0.3s 0.15s var(--ease-out) both; }
 .preset-pill:nth-child(5) { animation: pillSlideIn 0.3s 0.20s var(--ease-out) both; }
+.preset-pill:nth-child(6) { animation: pillSlideIn 0.3s 0.25s var(--ease-out) both; }
 
 @keyframes pillSlideIn {
   from { opacity: 0; transform: translateX(-8px); }

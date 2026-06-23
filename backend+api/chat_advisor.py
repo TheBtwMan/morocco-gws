@@ -243,6 +243,10 @@ Based on live **Google Earth Engine (GEE)** indicators for year **{year}**, here
     *   *Advice*: {ndvi_advice}
 *   🚜 **Land Suitability Index (LSI)**: **{lsi:.3f}** ({lsi_status})
     *   *Advice*: {lsi_advice}
+
+---
+
+> [!TIP] Try asking: *"What crops grow best here?"*, *"Is solar energy viable here?"*, or *"Explain NDWI"* to learn more.
 """
     return report
 
@@ -429,6 +433,10 @@ Based on live **Google Earth Engine (GEE)** indicators for year **{year}**, here
     *   *Recommendation*: A low suitability score is actually an asset for energy projects, as it indicates land that is non-arable, preventing land-use conflict with local farming communities.
 *   💨 **Wind Energy Hybridization**:
     *   *Recommendation*: If this is a coastal region, wind speeds are highly consistent. Consider designing a hybrid solar-wind microgrid to ensure 24/7 clean power generation.
+
+---
+
+> [!TIP] Try asking: *"What crops grow best here?"*, *"Analyze groundwater risk"*, or *"Compare all regions"*.
 """
 
     elif is_tourism:
@@ -470,6 +478,10 @@ Based on live **Google Earth Engine (GEE)** indicators for year **{year}**, here
     *   *Recommendation*: Avoid high-water turf grasses. Landscape hotels and public spaces using native species such as *Argania spinosa* or *Phoenix dactylifera* that are perfectly adapted to the local climatic zone.
 *   🚜 **Land Suitability & Soil**: Land Suitability Index is **{lsi:.3f}** ({lsi_status}).
     *   *Recommendation*: Ensure thorough geotech reports are conducted, as low soil moisture and vegetation can correspond to shifting sands or sandy soils requiring reinforced foundations.
+
+---
+
+> [!TIP] Try asking: *"Is solar energy viable here?"*, *"What crops grow best here?"*, or *"Explain Land Suitability"*.
 """
 
     elif is_water:
@@ -504,6 +516,10 @@ Based on live **Google Earth Engine (GEE)** indicators for year **{year}**, here
 1.  **Strict Pumping Control**: If Groundwater is in deficit, deep drilling is highly regulated and risky. Monitor water table levels closely and coordinate with the local river basin agency (ABH).
 2.  **Rainwater & Runoff Harvesting**: Build small retention basins or check-dams to capture seasonal rainfall and encourage natural infiltration to replenish shallow aquifers.
 3.  **Alternative Supplies**: Explore desalinated water or treated wastewater (REUSE) for agricultural and industrial applications to ease pressure on the aquifer.
+
+---
+
+> [!TIP] Try asking: *"What crops grow best here?"*, *"Explain GWD"*, or *"Is solar energy viable?"*.
 """
 
     elif is_crop:
@@ -541,6 +557,10 @@ Based on live **Google Earth Engine (GEE)** indicators for year **{year}**, here
 1.  **Crop Selection Alignment**: Shift cultivation strictly to the recommended crops for the **{zone_name}**. Planting water-heavy crops like watermelon, avocado, or citrus in water-depleted areas is highly discouraged.
 2.  **Soils & Mulching**: Apply organic compost and soil mulches to optimize moisture retention (NDWI) and restore degraded topsoil (NDVI).
 3.  **Modern Irrigation**: Transition from flood irrigation to subsurface drip systems and monitor soil tension using moisture sensors.
+
+---
+
+> [!TIP] Try asking: *"Is solar energy viable here?"*, *"Analyze groundwater risk"*, or *"Compare all regions"*.
 """
 
     else:
@@ -586,6 +606,10 @@ Based on live **Google Earth Engine (GEE)** indicators for year **{year}**, here
     *   *Advice*: {ndvi_advice}
 *   🚜 **Land Suitability Index (LSI)**: **{lsi:.3f}** ({lsi_status})
     *   *Advice*: {lsi_advice}
+
+---
+
+> [!TIP] Try asking: *"What crops grow best here?"*, *"Is solar energy viable?"*, or *"Compare all regions"*.
 """
 
 def get_expert_report(region: str, year: int, gw_val: float, ndwi_val: float, ndvi_val: float) -> str:
@@ -692,7 +716,24 @@ $$\text{NDWI} = \frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$$
 *   **Investment Relevance**: Essential to verify surface water availability. High NDWI indicates robust local reservoirs or canals; dropping NDWI signals agricultural drought.
 """
 
-    if is_explain_query and ("groundwater" in norm_msg or "grace" in norm_msg or "nappe" in norm_msg):
+    if is_explain_query and ("gwd" in norm_msg or "depth" in norm_msg or "water table" in norm_msg):
+        return """### 🕳️ Groundwater Depth Change (GWD) Explained
+
+**Groundwater Depth (GWD)** measures the annual change in the water table level derived from **GRACE-FO** satellite gravity data and **GLDAS** hydrological models:
+
+*   **Metric**: Meters of vertical water table change per year.
+*   **Interpretation**:
+    *   **< -1.0 m**: Severe water table drop. High pumping costs, regulatory risk, and potential well failure.
+    *   **-1.0 to 0.0 m**: Moderate decline. Water table is slowly receding; conservation measures are critical.
+    *   **> 0.0 m**: Stable or rising water table. Aquifer is being replenished.
+*   **Investment Relevance**: Directly impacts borehole drilling depth, pumping energy costs, and the long-term viability of well-fed irrigation systems. Rapid drops signal unsustainable extraction rates.
+
+---
+
+> [!TIP] Try asking: *"Which region has the best groundwater reserves?"* or *"Explain GWSA"* for the storage anomaly metric.
+"""
+
+    if is_explain_query and ("groundwater" in norm_msg or "grace" in norm_msg or "nappe" in norm_msg or "gwsa" in norm_msg):
         return """### 💧 Groundwater Storage Anomaly (GRACE) Explained
 
 **Groundwater Anomaly** data is fetched from the joint NASA/DLR **GRACE-FO** (Gravity Recovery and Climate Experiment) satellites. It measures subtle changes in Earth's gravitational pull caused by shifts in water mass underground:
@@ -702,6 +743,10 @@ $$\text{NDWI} = \frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$$
     *   **Negative Anomaly (< 0 cm)**: Depletion of deep groundwater reserves (water table is dropping).
     *   **Positive Anomaly (> 0 cm)**: Aquifer recharge (stable or increasing water reserves).
 *   **Investment Relevance**: Groundwater is the ultimate security buffer for dry periods. Deep negative anomalies indicate high risk of dry wells, strict extraction limits, and eventual high energy costs to pump deeper water.
+
+---
+
+> [!TIP] Try asking: *"Explain GWD"* for depth changes, or *"Explain Recharge"* for aquifer replenishment rates.
 """
 
     if is_explain_query and "recharge" in norm_msg:
@@ -1057,6 +1102,8 @@ The region with the **highest soil moisture and surface water availability** is 
 
 Using a multi-criteria decision index combining **Groundwater anomaly (35%)**, **Soil moisture (30%)**, and **Vegetation density (35%)** from **Google Earth Engine** measurements for **{year}**:
 
+> [!IMPORTANT] Scoring formula: `Viability = 0.35 × GW_Score + 0.30 × NDWI_Score + 0.35 × NDVI_Score` where each sub-score is normalized to 0–100. Regions above `60` are prime agricultural zones.
+
 #### 🟢 Prime Agricultural Zones (Viability Score >= 60)
 These zones possess strong soil moisture, stable vegetative cover, and minimal aquifer depletion risk. High potential for cash crops.
 """
@@ -1082,6 +1129,8 @@ These zones possess strong soil moisture, stable vegetative cover, and minimal a
         response_text += f"""
 ---
 *💡 Pro Tip: Turn on **"Sync Map Context"** and click on any region or custom coordinate point on the map to trigger a hyper-local soil and crop suitability report!*
+
+> [!TIP] Try asking: *"Analyze Souss-Massa"*, *"Is solar energy viable in Dakhla?"*, or *"Explain NDWI"*.
 """
         return response_text
 
