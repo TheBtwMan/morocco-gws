@@ -111,6 +111,45 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
     });
   }
 
+  function renderMath(line, idx) {
+    // Strip surrounding $$
+    let formula = line.replace(/^\$\$/, '').replace(/\$\$$/, '').trim();
+    
+    // Replace standard LaTeX macros with clean equivalents
+    formula = formula.replace(/\\text\{([^{}]+)\}/g, '$1');
+    formula = formula.replace(/\\times/g, ' × ');
+    formula = formula.replace(/\\max/g, 'max');
+
+    // Check if there is a fraction: \frac{num}{den}
+    const fracMatch = formula.match(/\\frac\{([^{}]+)\}\{([^{}]+)\}/);
+    if (fracMatch) {
+      const fullMatch = fracMatch[0];
+      const numerator = fracMatch[1];
+      const denominator = fracMatch[2];
+      
+      const parts = formula.split(fullMatch);
+      const leftText = parts[0] || "";
+      const rightText = parts[1] || "";
+      
+      return (
+        <div key={idx} className="math-block">
+          {leftText && <span className="math-text">{leftText}</span>}
+          <div className="math-fraction">
+            <span className="math-numerator">{numerator}</span>
+            <span className="math-denominator">{denominator}</span>
+          </div>
+          {rightText && <span className="math-text">{rightText}</span>}
+        </div>
+      );
+    }
+
+    return (
+      <div key={idx} className="math-block">
+        <span className="math-text">{formula}</span>
+      </div>
+    );
+  }
+
   function renderMarkdown(text) {
     if (!text) return null;
     const lines = text.split('\n');
@@ -119,6 +158,10 @@ I am your intelligent assistant linked directly to **Google Earth Engine (GEE)**
       if (!trimmed) return <div key={idx} style={{ height: '6px' }} />;
       if (trimmed === '---') return <hr key={idx} style={{ border: 0, height: '1px', background: '#313142', margin: '8px 0' }} />;
       
+      if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
+        return renderMath(trimmed, idx);
+      }
+
       if (trimmed.startsWith('### ')) {
         return <h3 key={idx}>{trimmed.substring(4)}</h3>;
       }

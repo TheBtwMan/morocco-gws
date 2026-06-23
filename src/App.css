@@ -1477,3 +1477,50 @@ body.platform-active {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Premium LaTeX Math Formulas Style
+   ───────────────────────────────────────────────────────────────────────────── */
+.math-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 14px auto;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
+  font-family: var(--font-display), sans-serif;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  width: fit-content;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.math-text {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.math-fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.math-numerator {
+  border-bottom: 1.5px solid rgba(var(--accent-rgb), 0.6);
+  padding: 0 8px 3px 8px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--accent-bright);
+}
+
+.math-denominator {
+  padding: 3px 8px 0 8px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--accent-bright);
+}
